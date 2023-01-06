@@ -13,9 +13,8 @@ from PyQt5.QtGui import QTextCursor
 from datetime import date
 
 
-from _src._api import filepath, logger, rest, config, logging_message
-from _src import test_cycle_selenium
-from nv_mb_tools._src import mb_tools
+from _src._api import logger, config, logging_message
+from _src import mb_tools
 
 logging = logger.logger
 logging_file_name = logger.log_full_name

@@ -2,9 +2,10 @@
 #!/usr/bin/python
 import os
 import datetime
+import paramiko
 
 #add internal libary
-from _src._api import logger, excel, playload, config, logging_message
+from _src._api import logger, config, logging_message
 
     
 #make logpath
@@ -17,78 +18,32 @@ qss_path = config_data['qss_path']
 message_path = config_data['message_path']
 test_cycle_url = config_data['test_cycle_url']
 
-def make_excel_data(data,ws_list):
-    tc_data ={}
-    for row_index in ws_list:
-        tc_data[str(row_index)] = str(data[ws_list.index(row_index)].value)
-        tc_data['updateDefectList'] = 'true'
-    return tc_data
+mb_path = 'static\config\mb_command.json'
+mb_data =config.load_config(mb_path)
 
-def update_test_execution_by_rest(rh, execution_data):
-    #logging.info('%s' %(str(execution_data)))
-    tc_playload = {}
-    execution_data['ExecutionStatus'] = config_data['test_resut'][execution_data['ExecutionStatus']]
-    #logging.info('%s' %(str(execution_data)))
+ip_list = mb_data['ip_list']
+user = mb_data['user']
 
-    input_items_for_test_cycle = config_data['input_items_for_test_cycle']
-    for input_item_for_test_cycle in input_items_for_test_cycle:
-        input_item_for_test_cycle = str(input_items_for_test_cycle[input_item_for_test_cycle]).replace('field_input_value',execution_data[input_item_for_test_cycle]).replace('\n','\\n')
-        input_item_for_test_cycle = eval(input_item_for_test_cycle)
-        tc_playload.update(input_item_for_test_cycle['input_playload'])
-    tc_playload['defectList'] = tc_playload['defectList'].split(',')
-    logging.info('test result infomation - %s' %str(tc_playload))
-    logging_message.input_message(path = message_path,message = 'test result infomation - %s' %str(tc_playload))
-    result = rh.updateExecution(execution_data['ExecutionId'],playload.makeplayload(tc_playload))
-    if result.status_code != '200':
-        logging.info(result.status_code)
-        logging_message.input_message(path = message_path,message = 'test execution updated - %s' %str(execution_data['ExecutionId']))
-    else:
-        logging.info(result.text)
-        logging.info(result)
-        logging_message.input_message(path = message_path,message = 'test execution updated error - %s - %s' %(str(execution_data['ExecutionId']),result.text))
-    return 0
+def ssh_connect():
+    logging.debug('start')
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+        ssh.connect(ip_list[1], username=user, password="")    # 대상IP, User명, 패스워드 입력
+        logging.debug('ssh connected. %s@%s' %(user,str(ip_list[1])))    # ssh 정상 접속 후 메시지 출력
+        logging.debug('send user trigger.')    # ssh 정상 접속 후 메시지 출력
+        ssh.exec_command(mb_data['user_trigger'])
+        ssh.close()   # ssh 접속하여 모든 작업 후 ssh 접속 close 하기
+    except Exception as err:
+        logging.debug(err)    # ssh 접속 실패 시 ssh 관련 에러 메시지 출력
 
-def update_test_cycle(rh, file):
-    # init
-    logging.info('start importing test cycle - %s' %file)
-    logging_message.input_message(path = message_path,message = 'start importing test cycle - %s' %file)
-    wb = excel.Workbook(file,read_only=True,data_only=True)
-    logging.info(wb.get_sheet_list())
-    worksheet = config_data['worksheet']
-    logging.info('search for %s in %s' %(worksheet,str(wb.get_sheet_list())))
-    logging_message.input_message(path = message_path,message = 'search for %s in %s' %(worksheet,str(wb.get_sheet_list())))
-    if worksheet not in wb.get_sheet_list():
-        logging.info('there is no %s in %s so use first sheet' %(worksheet,str(wb.get_sheet_list())))
-        logging_message.input_message(path = message_path,message = 'there is no %s in %s so use first sheet' %(worksheet,str(wb.get_sheet_list())))
-        worksheet = wb.get_sheet_list()[0]
-        config_data['worksheet'] = worksheet
-        config.save_config(config_data,config_path)
-    else:
-        logging.info('there is %s in %s so use the sheet' %(worksheet,str(wb.get_sheet_list())))
-        logging_message.input_message(path = message_path,message = 'there is %s in %s so use the sheet' %(worksheet,str(wb.get_sheet_list())))
-    tc_ws = wb.get_worksheet(worksheet)
-    tc_row_index = wb.get_first_row(worksheet)
-    input_items_tc = config_data['input_items_for_test_cycle']
-    logging.info('check row index - %s' %str(tc_row_index))
+def send(ssh):
+    stdin, stdout, stderr = ssh.exec_command("ls -l")   # ssh 접속한 경로에 디렉토리 및 파일 리스트 확인 명령어 실행
+    lines = stdout.readlines()
+    for i in lines:    # for문을 통해 명령어 결과값 출력.
+        re = str(i).replace('\n', '')
+        print(re)
 
-    logging.info('this is input items for test cycle %s' %input_items_tc.keys())
-
-    for data in tc_ws.rows:
-        tc_data = {}
-        tc_data = make_excel_data(data,tc_row_index)
-        #if first cell is None => break
-        ExecutionId = tc_data['ExecutionId']
-        StepId = tc_data['StepId'] if 'StepId' in tc_data.keys() else None
-        if ExecutionId == 'ExecutionId':
-            continue
-        if ExecutionId in ('None',None):
-            break
-        else:
-            logging_message.input_message(path = message_path,message = 'ExecutionId %s - StepId %s' %(ExecutionId,StepId))
-            logging.info('ExecutionId %s - StepId %s' %(ExecutionId,StepId))
-            update_test_execution_by_rest(rh, tc_data)
-    logging_message.input_message(path = message_path,message ='import done and close workbook!')
-    logging.info('import done and close workbook!')
-    wb.close_workbook()
-    return 0
-    
+if __name__ == "__main__":
+    logging.info(__name__)
+    logging_message.input_message(path = message_path, message = __name__)
