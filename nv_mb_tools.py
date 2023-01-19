@@ -33,8 +33,8 @@ def start_app():
 
 def debug_app():
     file = r'D:\_source\python\nv_test_cycle\static\test_cycle_template\E042.1_224741_JPN.xlsx'
-    mb_tools.ssh_connect()
+    mb_tools.debug_test()
     
 if __name__ =='__main__':
-    debug_app()
+    start_app()
 

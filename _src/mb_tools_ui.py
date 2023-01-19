@@ -27,6 +27,13 @@ qss_path  = config_data['qss_path']
 logging.debug('qss_path is %s' %qss_path)
 logging.debug('config_path is %s' %config_path)
 
+
+mb_path = 'static\config\mb_command.json'
+mb_data =config.load_config(mb_path)
+
+user = mb_data['user']
+current_project = mb_data['current_project']
+
 class MyMainWindow(QMainWindow):
     def __init__(self,title):
         super().__init__()
@@ -37,9 +44,9 @@ class MyMainWindow(QMainWindow):
         self.show()
 
     def initUI(self):
-        self.statusBar().showMessage('Ready')
+        self.statusBar().showMessage('')
         self.setWindowTitle(self.title)
-        self.setGeometry(200,200,1000,1200)
+        self.setGeometry(200,200,1200,800)
         #self.setFixedSize(600, 480)
         self.form_widget = FormWidget(self, self.statusBar())
         self.setCentralWidget(self.form_widget)
@@ -48,49 +55,68 @@ class MyMainWindow(QMainWindow):
 class FormWidget(QWidget):
     def __init__(self, parent,statusbar):
         super(FormWidget, self).__init__(parent)
-        self.statusbar_status = 'not logged in'
-        self.session_info = None
+        self.statusbar_status = 'disconnected'
+        self.ssh = 0
         self.logging_temp = None
         self.statusbar = statusbar
         self.initUI() 
         self.show()
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.thread_ui)
-        self.timer.start(1000)
+        self.timer_onescond = QTimer(self)
+        self.timer_onescond.timeout.connect(self.thread_for_one_sec)
+        self.timer_onescond.start(1000)
+        self.timer_tenscond = QTimer(self)
+        self.timer_tenscond.timeout.connect(self.thread_for_ten_sec)
+        self.timer_tenscond.start(10000)
+        
 
     def initUI(self):
         self.setStyleSheet(open(qss_path, "r").read())
         # make layout
-        self.layout_main = QVBoxLayout(self)
-        # login page layout
-        self.login_layout = QHBoxLayout(self)
-        self.login_layout_id_pw = QGridLayout(self)
-        #set user data
-        self.user = config_data['id']
-        self.password = config_data['password']
-        self.line_id = QLineEdit(self.user)       
-        self.line_password = QLineEdit(self.password)
-        self.line_password.setEchoMode(QLineEdit.Password)
-        self.login_import_button = QPushButton('Log In')
-        self.login_import_button.setFixedHeight(60)
-        self.login_layout_id_pw.addWidget(QLabel('ID') , 1, 0)
-        self.login_layout_id_pw.addWidget(QLabel('Password') , 2, 0)
-        self.login_layout_id_pw.addWidget(self.line_id, 1, 2)
-        self.login_layout_id_pw.addWidget(self.line_password, 2, 2)
-        self.login_layout.addLayout(self.login_layout_id_pw)
-        self.login_layout.addWidget(self.login_import_button)
-        self.layout_main.addLayout(self.login_layout)
+        self.layout_main = QHBoxLayout(self)
+        self.layout_fun = QVBoxLayout(self)
 
-        # add log layout
+        #ssh connected layout
+        self.layout_ssh_connect = QGridLayout(self)
+        self.ip = mb_data['ip']
+        self.line_ip = QLineEdit(self.ip)
+        self.button_ssh_connect = QPushButton('connect')
+        self.button_ssh_connect.setFixedHeight(30)
+        self.layout_ver = QVBoxLayout(self)
+        self.qtext_ver_browser = QTextBrowser()
+        self.qtext_ver_browser.setReadOnly(1)
+        self.qtext_ver_browser.setFixedHeight(100)
+        self.layout_ssh_connect.addWidget(QLabel('ip: ') , 1, 0)
+        self.layout_ssh_connect.addWidget(self.line_ip, 1, 1)
+        self.layout_ssh_connect.addWidget(self.button_ssh_connect , 1, 2)
+        self.layout_ssh_connect.addWidget(QLabel('version') , 2, 0)
+        self.layout_ssh_connect.addWidget(self.qtext_ver_browser , 2, 1)
+        
+        #function layout
+        self.layout_function = QGridLayout(self)
+        self.button_user_trigger = QPushButton('user trigger')
+        self.button_user_test = QPushButton('test')
+        self.layout_function.addWidget(self.button_user_trigger, 1, 0)
+        self.layout_function.addWidget(self.button_user_test, 1, 1)
+
+        #log layout
+        self.layout_log = QGridLayout(self)
         self.qtext_log_browser = QTextBrowser()
+        self.qtext_log_browser.setFixedWidth(400)
         self.qtext_log_browser.setReadOnly(1)
-        self.layout_main.addWidget(self.qtext_log_browser)
+        self.layout_log.addWidget(self.qtext_log_browser, 1, 0)
+        
+        #main layout
+        self.layout_fun.addLayout(self.layout_ver)
+        self.layout_fun.addLayout(self.layout_ssh_connect)
+        self.layout_fun.addLayout(self.layout_function)
+        self.layout_main.addLayout(self.layout_fun)
+        self.layout_main.addLayout(self.layout_log)
         self.setLayout(self.layout_main)
-
-        #login / import event
-        self.login_import_button.clicked.connect(self.on_start)
-        self.line_password.returnPressed.connect(self.on_start)
-
+        
+        #connect event
+        self.button_ssh_connect.clicked.connect(self.on_start)
+        self.button_user_trigger.clicked.connect(self.on_trigger)
+        #self.button_user_test.clicked.connect(self.on_start)
 
     # add event list
     def open_fileName_dialog(self):
@@ -116,12 +142,13 @@ class FormWidget(QWidget):
         return file_name
 
     #set tread to change status bar and log browser
-    def thread_ui(self):
+    def thread_for_one_sec(self):
         def show_time_statusbar():
             self.statusbar_time = QTime.currentTime().toString("hh:mm:ss")
             self.statusbar_message = self.statusbar_time + '\t-\t' + self.statusbar_status  
             self.statusbar.showMessage(str(self.statusbar_message))
-          
+            return 0
+
         def show_logging():
             with open(message_path, 'r') as myfile:
                 self.logging = myfile.read()
@@ -131,58 +158,69 @@ class FormWidget(QWidget):
                 self.qtext_log_browser.setText(self.logging)
                 self.logging_temp = self.logging
                 self.qtext_log_browser.moveCursor(QTextCursor.End)
+            return 0
         show_time_statusbar()
         show_logging()
         return 0
-      
+    
+    def thread_for_ten_sec(self):
+        def check_status_ssh():
+            self.ssh_status = mb_tools.check_ssh_connection(self.ssh)
+            #logging.debug('statusbar %s - ssh status %s' %(str(self.statusbar_status),str(self.ssh_status)))
+            if self.statusbar_status == "disconnected":
+                pass
+            if self.statusbar_status == "connected" and self.ssh_status is False:
+                logging.debug('ssh disconnected')
+                self.statusbar_status = "disconnected"
+                self.line_ip.setReadOnly(False)
+                self.button_ssh_connect.setEnabled(True)
+                self.button_ssh_connect.setText('connect')
+                self.ssh = 0
+                logging_message.input_message(path = message_path, message = '%s@%s has been disconnected' %('root',self.ip))
+        check_status_ssh()
+        return 0
 
+    
     @pyqtSlot()
+    def on_trigger(self):
+        if self.statusbar_status == "disconnected":
+            pass
+        if self.statusbar_status == "connected":
+            lines = mb_tools.make_trigger(self.ssh)
+
     def on_start(self):
-        if self.statusbar_status == 'not logged in':
-            logging_message.input_message(path = message_path,message = 'current not login, start login')
-            self.user = self.line_id.text()
-            self.password = self.line_password.text()
-            self.session_list = rest.initsession(self.user, self.password)
-            self.session = self.session_list[0]
-            self.session_info = self.session_list[1]
-            #fail to login
-            if self.session_info == None:
-                QMessageBox.about(self, "Login Fail", "please check your password or internet connection")
-            #if loggin success
-            else:
-                self.login_import_button.setText('Import\nTest Cycle')
-                self.statusbar_status = 'logged in'
-                logging_message.input_message(path = message_path,message = 'user (%s) is logged in' %self.user)
-                config_data['id'] = self.user
-                config_data['password'] = self.password
+        def connect_ssh():
+            logging.info('statusbar_status: %s' %self.statusbar_status)
+            self.ip = self.line_ip.text()
+            logging.info('ip is %s' %self.ip)
+            self.ssh = mb_tools.ssh_connect(self.ip,'root')
+            if self.ssh != 0:
+                config_data['ip'] = self.ip
                 config.save_config(config_data,config_path)
-                self.line_id.setReadOnly(1)
-                self.line_password.setReadOnly(1)
-        else:
-            logging_message.input_message(path = message_path, message = 'already logged in, start Test Cycle import~!')
-            self.statusbar_status = 'Test Cycle importing~'
-            self.file_name = self.open_fileName_dialog()
-            logging.info(self.file_name)
-            def import_test_cycle():
-                self.login_import_button.setEnabled(False)
-                #make session
-                self.rh = rest.Handler_TestCycle(self.session)
-                try:
-                    if config_data['import_type'] == 'selenium':
-                        test_cycle_selenium.update_test_cycle(self.file_name)
-                    elif config_data['import_type'] == 'rest':
-                        mb_tools.update_test_cycle(self.rh,self.file_name)
-                except Exception as inst:
-                    logging.debug(type(inst))
-                    logging.debug(inst)
-                    logging.debug(traceback.format_exc())
-                    logging_message.input_message(path = message_path,message = "there is errer at the point - %s" %str(inst))
-                finally:
-                    self.login_import_button.setEnabled(True)
-                    self.statusbar_status = 'Test Cycle importing done.'
+                self.statusbar_status = 'connected'
+                self.button_ssh_connect.setText('connected')
+                self.line_ip.setReadOnly(True)
+                self.button_ssh_connect.setEnabled(False)
+                temp_version = ''
+                hu_ver, sw_ver, map_ver, ui_ver = mb_tools.get_version(self.ssh)
+                map_ver= mb_tools.get_map_version()
+                temp_version = temp_version + 'HU version: %s' %hu_ver +'\n'
+                temp_version = temp_version + 'Navi version: %s' %sw_ver +'\n'
+                temp_version = temp_version + 'Map version: %s' %map_ver +'\n'
+                temp_version = temp_version + 'UI version: %s' %ui_ver
+                self.qtext_ver_browser.setText(temp_version)
+                return self.ssh
+            else:
+                #if ssh connected fail
                 return 0
-            thread_import = threading.Thread(target=import_test_cycle)
-            thread_import.start()
+        if self.statusbar_status == 'disconnected':
+            self.ssh = connect_ssh()
+            return 0
+            
+
+
+            
+            
 
 
 
