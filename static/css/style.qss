@@ -11,10 +11,9 @@ QLineEdit {
    color: #618b38;
 }
 
-
 QTextBrowser {
    font-family: "Lucida Console";
-   font-size: 12px;
+   font-size: 15px;
    color: #003399;
 }
 
@@ -28,10 +27,24 @@ QLabel {
 
 QPushButton {
     font-family: "Lucida Console";
-    font-size: 12px;
-    height: 40px;
-    width: 40px;
+    font-size: 13px;
+    height: 30px;
 }
+
+/* 
+QPushButton {
+    font-family: "Lucida Console";
+    font-size: 13px;
+    height: 30px;
+    border-radius: 5px;
+    border: 2px solid rgb(0, 51, 153);
+}
+
+QPushButton:!hover
+{
+  border: 2px solid rgb(31, 80, 181)
+}
+ */
 
 QProgressBar {
     border: "2px solid grey";
@@ -42,3 +55,4 @@ QProgressBar::chunk {
     background-color: #05B8CC;
     width: 20px;
 }
+
