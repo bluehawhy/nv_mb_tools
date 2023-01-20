@@ -100,7 +100,6 @@ def quit_ssh(ssh):
     ssh.close()   # ssh 접속하여 모든 작업 후 ssh 접속 close 하기
     return 0
 
-
 def check_ssh_connection(ssh):
     if ssh == 0:
         logging.debug('ssh_status: False')
@@ -117,19 +116,6 @@ def send(ssh,command):
         re = str(i).replace('\n', '')
         logging.debug(re)
 
-
-def debug_test():
-    logging.debug('debug start')
-    ssh =  ssh_connect(ip,user)
-    hu_ver, sw_ver, map_ver, ui_ver = get_version(ssh)
-    map_ver= get_map_version()
-    logging.info(hu_ver)
-    logging.info(sw_ver)
-    logging.info(map_ver)
-    logging.info(ui_ver)
-
-
-    return 0
 
 if __name__ == "__main__":
     logging.info(__name__)
