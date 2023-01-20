@@ -4,10 +4,9 @@ import sys
 import time
 import threading
 import traceback
-from PyQt5.QtWidgets import QMainWindow, QApplication
-from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget
-from PyQt5.QtWidgets import QLabel, QLineEdit, QPushButton, QGridLayout, QPlainTextEdit, QFileDialog, QMessageBox, QTextBrowser
-from PyQt5.QtCore import pyqtSlot, QTimer, QTime
+
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import  Qt, pyqtSlot, QTimer, QTime
 
 from PyQt5.QtGui import QTextCursor
 from datetime import date
@@ -46,7 +45,7 @@ class MyMainWindow(QMainWindow):
     def initUI(self):
         self.statusBar().showMessage('')
         self.setWindowTitle(self.title)
-        self.setGeometry(200,200,1200,800)
+        self.setGeometry(200,200,800,600)
         #self.setFixedSize(600, 480)
         self.form_widget = FormWidget(self, self.statusBar())
         self.setCentralWidget(self.form_widget)
@@ -57,6 +56,7 @@ class FormWidget(QWidget):
         super(FormWidget, self).__init__(parent)
         self.statusbar_status = 'disconnected'
         self.ssh = 0
+        self.project = 0
         self.logging_temp = None
         self.statusbar = statusbar
         self.initUI() 
@@ -75,43 +75,72 @@ class FormWidget(QWidget):
         self.layout_main = QHBoxLayout(self)
         self.layout_fun = QVBoxLayout(self)
 
+        #project layout
+        self.layout_project = QHBoxLayout(self)
+        project_list = ['None']
+        if len(mb_data['project_list']) != 0:
+            project_list = mb_data['project_list']
+        logging.info('project list - %s' %str(project_list))
+        self.layout_project.addWidget(QLabel('project: '))
+        for project in project_list:
+            self.radiobutton = QRadioButton(project)
+            self.radiobutton.project = project
+            self.radiobutton.toggled.connect(self.on_project_clicked)
+            self.layout_project.addWidget(self.radiobutton)
+        
+
         #ssh connected layout
         self.layout_ssh_connect = QGridLayout(self)
         self.ip = mb_data['ip']
         self.line_ip = QLineEdit(self.ip)
         self.button_ssh_connect = QPushButton('connect')
-        self.button_ssh_connect.setFixedHeight(30)
+        self.layout_ssh_connect.addWidget(QLabel('ip: ') , 1, 0)
+        self.layout_ssh_connect.addWidget(self.line_ip, 1, 1)
+        self.layout_ssh_connect.addWidget(self.button_ssh_connect , 1, 2)
+
         self.layout_ver = QVBoxLayout(self)
         self.qtext_ver_browser = QTextBrowser()
         self.qtext_ver_browser.setReadOnly(1)
         self.qtext_ver_browser.setFixedHeight(100)
-        self.layout_ssh_connect.addWidget(QLabel('ip: ') , 1, 0)
-        self.layout_ssh_connect.addWidget(self.line_ip, 1, 1)
-        self.layout_ssh_connect.addWidget(self.button_ssh_connect , 1, 2)
-        self.layout_ssh_connect.addWidget(QLabel('version') , 2, 0)
-        self.layout_ssh_connect.addWidget(self.qtext_ver_browser , 2, 1)
+        self.label_ver = QLabel('version')
+        self.label_ver.setFixedHeight(30)
+        self.layout_ver.addWidget(self.label_ver)
+        self.layout_ver.addWidget(self.qtext_ver_browser)
         
         #function layout
         self.layout_function = QGridLayout(self)
         self.button_user_trigger = QPushButton('user trigger')
-        self.button_user_test = QPushButton('test')
-        self.layout_function.addWidget(self.button_user_trigger, 1, 0)
-        self.layout_function.addWidget(self.button_user_test, 1, 1)
+        self.button_user_test1 = QPushButton('test1')
+        self.button_user_test2 = QPushButton('test2')
+        self.button_user_test3 = QPushButton('test3')
+        self.button_user_test4 = QPushButton('test4')
+        self.layout_function.addWidget(self.button_user_trigger, 0, 0)
+        self.layout_function.addWidget(self.button_user_test1, 1, 0)
+        self.layout_function.addWidget(self.button_user_test2, 1, 1)
+        self.layout_function.addWidget(self.button_user_test3, 2, 0)
+        self.layout_function.addWidget(self.button_user_test4, 2, 1)
+
 
         #log layout
         self.layout_log = QGridLayout(self)
         self.qtext_log_browser = QTextBrowser()
-        self.qtext_log_browser.setFixedWidth(400)
+        #self.qtext_log_browser.setFixedWidth(600)
         self.qtext_log_browser.setReadOnly(1)
         self.layout_log.addWidget(self.qtext_log_browser, 1, 0)
         
         #main layout
-        self.layout_fun.addLayout(self.layout_ver)
+        self.layout_fun.addLayout(self.layout_project)
         self.layout_fun.addLayout(self.layout_ssh_connect)
+        self.layout_fun.addLayout(self.layout_ver)
         self.layout_fun.addLayout(self.layout_function)
         self.layout_main.addLayout(self.layout_fun)
         self.layout_main.addLayout(self.layout_log)
         self.setLayout(self.layout_main)
+
+        #set Alignment
+        self.layout_ver.setAlignment(Qt.AlignTop)
+        self.layout_project.setAlignment(Qt.AlignLeft)
+        self.layout_fun.setAlignment(Qt.AlignTop)
         
         #connect event
         self.button_ssh_connect.clicked.connect(self.on_start)
@@ -176,18 +205,27 @@ class FormWidget(QWidget):
                 self.button_ssh_connect.setEnabled(True)
                 self.button_ssh_connect.setText('connect')
                 self.ssh = 0
-                logging_message.input_message(path = message_path, message = '%s@%s has been disconnected' %('root',self.ip))
+                logging_message.input_message(path = message_path, message = '%s@%s has been disconnected.' %('root',self.ip))
         check_status_ssh()
         return 0
 
     
     @pyqtSlot()
+    def on_project_clicked(self):
+        radioButton = self.sender()
+        if radioButton.isChecked():
+            logging.debug("project is %s" % (radioButton.project))
+            self.project = radioButton.project
+            logging_message.input_message(path = message_path, message = '%s is selected' %(self.project))
+        return 0
+
     def on_trigger(self):
         if self.statusbar_status == "disconnected":
             pass
         if self.statusbar_status == "connected":
             lines = mb_tools.make_trigger(self.ssh)
-
+            return 0
+    
     def on_start(self):
         def connect_ssh():
             logging.info('statusbar_status: %s' %self.statusbar_status)
