@@ -22,7 +22,7 @@ def decrypt(raw):
     return ret
 
 def createLicense(raw):
-    f = open("license.txt", 'w', encoding="utf-8")
+    f = open("static/license/license.txt", 'w', encoding="utf-8")
     encrypted = encrypt(raw)
     f.write(encrypted)
     f.close()
