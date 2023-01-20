@@ -1,9 +1,5 @@
 #!/usr/bin/python
 import os
-import sys
-import time
-import threading
-import traceback
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import  Qt, pyqtSlot, QTimer, QTime
@@ -88,7 +84,6 @@ class FormWidget(QWidget):
             self.radiobutton.toggled.connect(self.on_project_clicked)
             self.layout_project.addWidget(self.radiobutton)
         
-
         #ssh connected layout
         self.layout_ssh_connect = QGridLayout(self)
         self.ip = mb_data['ip']
