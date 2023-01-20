@@ -36,7 +36,6 @@ headers = {
 
 def initsession(username, password):
     logging.info("start log in from rest.py")
-
     # Create Session
     logging.debug("make session")
     s = requests.Session()
