@@ -1,7 +1,8 @@
-import os, sys
-from PyQt5.QtWidgets import QApplication
+import sys
+import datetime
+from PyQt5.QtWidgets import QApplication, QMessageBox
 
-from _src._api import logger, logging_message, config, license_key
+from _src._api import logger, logging_message, config, license_key, license_login
 from _src import mb_tools, mb_tools_ui
 
 logging= logger.logger
@@ -22,7 +23,7 @@ message_path = config_data['message_path']
 
 
 
-def start_app():
+def function_app():
     logging_message.remove_message(message_path)
     logging_message.input_message(path = message_path,message = version)
     for revision in revision_list:
@@ -30,6 +31,24 @@ def start_app():
     app = QApplication(sys.argv)
     ex = mb_tools_ui.MyMainWindow(version)
     sys.exit(app.exec_())
+
+def login_app():
+    app = QApplication(sys.argv)
+    form = license_login.MyMainWindow()
+    sys.exit(app.exec_())
+
+    
+def prod_app():
+    license = license_key.check_License()
+    lic_validation = license_key.valild_License(license)
+    if lic_validation == True:
+        logging.info('license is valild - %s' %str(license))
+        function_app()
+    else:
+        logging.info('license is invalild - %s need up to date' %str(license))
+        login_app()
+            
+
 
 def debug_app():
     file = r'D:\_source\python\nv_test_cycle\static\test_cycle_template\E042.1_224741_JPN.xlsx'
@@ -43,9 +62,20 @@ def debug_app():
     def test_func2():
         from _src._api import jira_rest
         jira_rest.initsession(id,password)
+        
+        license_for_day_100 = datetime.date.today() + datetime.timedelta(days=100)
+        licen_raw = id+"_"+ license_for_day_100.strftime("%Y%m%d")
+        logging.info(licen_raw)
+        license_key.createLicense(licen_raw)
         return 0
-    test_func2()
+    def test_func3():
+        license = license_key.check_License()
+        lic_validation = license_key.valild_License(license)
+        logging.info(lic_validation)
+        return lic_validation, license
+
+    
     
 if __name__ =='__main__':
-    debug_app()
+    prod_app()
 
