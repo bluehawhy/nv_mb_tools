@@ -51,10 +51,20 @@ def prod_app():
 
 
 def debug_app():
+    def get_ssh():
+        mb_path = 'static\config\mb_command.json'
+        mb_data =config.load_config(mb_path)
+        ip = mb_data['ip']
+        user = mb_data['user']
+        ssh = mb_tools.ssh_connect(ip,user)
+        return ssh
+    ssh = get_ssh()
+    mb_tools.download_trigger(ssh)
+    
     return 0
 
     
     
 if __name__ =='__main__':
-    prod_app()
+    debug_app()
 
