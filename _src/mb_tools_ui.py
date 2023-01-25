@@ -28,7 +28,10 @@ mb_data =config.load_config(mb_path)
 
 ip = mb_data['ip']
 user = mb_data['user']
-current_project = mb_data['current_project']
+current_project = ['None']
+if len(mb_data['project_list']) != 0:
+            current_project = mb_data['project_list']
+
 
 class MyMainWindow(QMainWindow):
     def __init__(self,title):
@@ -73,13 +76,10 @@ class FormWidget(QWidget):
         self.layout_fun = QVBoxLayout(self)
 
         #project layout
-        self.layout_project = QHBoxLayout(self)
-        project_list = ['None']
-        if len(mb_data['project_list']) != 0:
-            project_list = mb_data['project_list']
-        logging.info('project list - %s' %str(project_list))
+        self.layout_project = QHBoxLayout(self)    
+        logging.info('project list - %s' %str(current_project))
         self.layout_project.addWidget(QLabel('project: '))
-        for project in project_list:
+        for project in current_project:
             self.radiobutton = QRadioButton(project)
             self.radiobutton.project = project
             self.radiobutton.toggled.connect(self.on_project_clicked)
@@ -105,16 +105,16 @@ class FormWidget(QWidget):
         
         #function layout
         self.layout_function = QGridLayout(self)
-        self.button_user_trigger = QPushButton('user trigger')
-        self.button_user_test1 = QPushButton('get traffic_sdi_dat')
-        self.button_user_test2 = QPushButton('test2')
-        self.button_user_test3 = QPushButton('test3')
-        self.button_user_test4 = QPushButton('test4')
-        self.layout_function.addWidget(self.button_user_trigger, 0, 0)
-        self.layout_function.addWidget(self.button_user_test1, 1, 0)
-        self.layout_function.addWidget(self.button_user_test2, 1, 1)
-        self.layout_function.addWidget(self.button_user_test3, 2, 0)
-        self.layout_function.addWidget(self.button_user_test4, 2, 1)
+        self.button_function_0 = QPushButton('user trigger')
+        self.button_function_1 = QPushButton('get traffic_sdi_dat')
+        self.button_function_2 = QPushButton('get user trigger')
+        self.button_function_3 = QPushButton('test3')
+        self.button_function_4 = QPushButton('test4')
+        self.layout_function.addWidget(self.button_function_0, 0, 0)
+        self.layout_function.addWidget(self.button_function_1, 1, 0)
+        self.layout_function.addWidget(self.button_function_2, 1, 1)
+        self.layout_function.addWidget(self.button_function_3, 2, 0)
+        self.layout_function.addWidget(self.button_function_4, 2, 1)
 
         #log layout
         self.layout_log = QGridLayout(self)
@@ -139,11 +139,11 @@ class FormWidget(QWidget):
         
         #connect event
         self.button_ssh_connect.clicked.connect(self.on_start)
-        self.button_user_trigger.clicked.connect(self.on_trigger)
-        self.button_user_test1.clicked.connect(self.on_get_traffic_dat)
-        #self.button_user_test2.clicked.connect(self.on_trigger)
-        #self.button_user_test3.clicked.connect(self.on_trigger)
-        self.button_user_test4.clicked.connect(self.test)
+        self.button_function_0.clicked.connect(self.on_trigger)
+        self.button_function_1.clicked.connect(self.on_get_traffic_dat)
+        self.button_function_2.clicked.connect(self.on_get_user_trigger)
+        #self.button_function_3.clicked.connect(self.on_trigger)
+        self.button_function_4.clicked.connect(self.test)
 
     # add event list
     def open_fileName_dialog(self):
@@ -234,6 +234,9 @@ class FormWidget(QWidget):
             logging.debug("project is %s" % (radioButton.project))
             self.project = radioButton.project
             logging_message.input_message(path = message_path, message = '%s is selected' %(self.project))
+            mb_data['current_project']=self.project
+            #logging.debug(mb_data)
+            config.save_config(mb_data,mb_path)
         return 0
 
     #ssh connection start
@@ -258,6 +261,8 @@ class FormWidget(QWidget):
                 temp_version = temp_version + 'Map version: %s' %map_ver +'\n'
                 temp_version = temp_version + 'UI version: %s' %ui_ver
                 self.qtext_ver_browser.setText(temp_version)
+                self.radiobutton.setEnabled(False)
+
                 return self.ssh
             else:
                 #if ssh connected fail
@@ -287,7 +292,13 @@ class FormWidget(QWidget):
             mb_tools.download_file(user,ip,traffic_sdi_dat,path='./static/temp/traffic')
             return 0
 
-            
+    def on_get_user_trigger(self):
+        if self.statusbar_status == "disconnected":
+            pass
+        if self.statusbar_status == "connected":
+            mb_tools.download_trigger(self.ssh)
+            return 0
+
             
     #==================================================================
 
