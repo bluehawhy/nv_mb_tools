@@ -51,28 +51,7 @@ def prod_app():
 
 
 def debug_app():
-    file = r'D:\_source\python\nv_test_cycle\static\test_cycle_template\E042.1_224741_JPN.xlsx'
-    
-    config_path = 'static\config\config.json'
-    config_data =config.load_config(config_path)
-
-    id = 'miskang'
-    password = 'Zjavhwmzjvl23@1'
-    
-    def test_func2():
-        from _src._api import jira_rest
-        jira_rest.initsession(id,password)
-        
-        license_for_day_100 = datetime.date.today() + datetime.timedelta(days=100)
-        licen_raw = id+"_"+ license_for_day_100.strftime("%Y%m%d")
-        logging.info(licen_raw)
-        license_key.createLicense(licen_raw)
-        return 0
-    def test_func3():
-        license = license_key.check_License()
-        lic_validation = license_key.valild_License(license)
-        logging.info(lic_validation)
-        return lic_validation, license
+    return 0
 
     
     
