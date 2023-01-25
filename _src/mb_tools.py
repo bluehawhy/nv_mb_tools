@@ -35,9 +35,43 @@ def download_file(user,ip,file,path='./static/temp'):
     add_known_hosts(user,ip)
     command = 'scp -q "%s@%s:%s" "%s"' %(user,ip,file,path)
     os.system(command)
-    #logging.debug(command)
+    logging.debug(command)
     download_path = os.path.join(path,os.path.basename(file))
     return download_path
+
+def ssh_connect(ip,user):
+    logging.debug('ssh connection start')
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+    try:
+        ssh.connect(ip, username=user, password="", timeout=10)    # 대상IP, User명, 패스워드 입력
+        logging.debug('ssh connected. %s@%s' %(user,ip))    # ssh 정상 접속 후 메시지 출력
+        logging_message.input_message(path = message_path, message = 'connected - %s@%s' %(user,ip))
+        return ssh
+    except Exception as err:
+        logging.debug(err)    # ssh 접속 실패 시 ssh 관련 에러 메시지 출력
+        logging_message.input_message(path = message_path, message = 'no response from server or ip')
+        return 0
+
+def quit_ssh(ssh):
+    ssh.close()   # ssh 접속하여 모든 작업 후 ssh 접속 close 하기
+    return 0
+
+def check_ssh_connection(ssh):
+    if ssh == 0:
+        logging.debug('ssh_status: False')
+        return False
+    #ui에서 상태 체크 및 False로 오면 ui버튼 비활성화 및 connection 활성화
+    ssh_status = ssh.get_transport().is_active()
+    #logging.debug('ssh_status: %s' %str(ssh_status))
+    return ssh_status
+
+def send(ssh,command):
+    stdin, stdout, stderr = ssh.exec_command(command)   # ssh 접속한 경로에 디렉토리 및 파일 리스트 확인 명령어 실행
+    lines = stdout.readlines()
+    for i in lines:    # for문을 통해 명령어 결과값 출력.
+        re = str(i).replace('\n', '')
+        logging.debug(re)
 
 def make_trigger(ssh):
     logging.debug('send user trigger.')
@@ -80,41 +114,6 @@ def get_version(ssh):
     #logging.debug(map_ver)
     #logging.debug(ui_ver)
     return hu_ver, sw_ver, map_ver, ui_ver
-
-
-def ssh_connect(ip,user):
-    logging.debug('ssh connection start')
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy)
-    try:
-        ssh.connect(ip, username=user, password="", timeout=10)    # 대상IP, User명, 패스워드 입력
-        logging.debug('ssh connected. %s@%s' %(user,ip))    # ssh 정상 접속 후 메시지 출력
-        logging_message.input_message(path = message_path, message = 'connected - %s@%s' %(user,ip))
-        return ssh
-    except Exception as err:
-        logging.debug(err)    # ssh 접속 실패 시 ssh 관련 에러 메시지 출력
-        logging_message.input_message(path = message_path, message = 'no response from server or ip')
-        return 0
-
-def quit_ssh(ssh):
-    ssh.close()   # ssh 접속하여 모든 작업 후 ssh 접속 close 하기
-    return 0
-
-def check_ssh_connection(ssh):
-    if ssh == 0:
-        logging.debug('ssh_status: False')
-        return False
-    #ui에서 상태 체크 및 False로 오면 ui버튼 비활성화 및 connection 활성화
-    ssh_status = ssh.get_transport().is_active()
-    #logging.debug('ssh_status: %s' %str(ssh_status))
-    return ssh_status
-
-def send(ssh,command):
-    stdin, stdout, stderr = ssh.exec_command(command)   # ssh 접속한 경로에 디렉토리 및 파일 리스트 확인 명령어 실행
-    lines = stdout.readlines()
-    for i in lines:    # for문을 통해 명령어 결과값 출력.
-        re = str(i).replace('\n', '')
-        logging.debug(re)
 
 
 if __name__ == "__main__":
