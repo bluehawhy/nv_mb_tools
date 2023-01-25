@@ -26,6 +26,7 @@ logging.debug('config_path is %s' %config_path)
 mb_path = 'static\config\mb_command.json'
 mb_data =config.load_config(mb_path)
 
+ip = mb_data['ip']
 user = mb_data['user']
 current_project = mb_data['current_project']
 
@@ -105,7 +106,7 @@ class FormWidget(QWidget):
         #function layout
         self.layout_function = QGridLayout(self)
         self.button_user_trigger = QPushButton('user trigger')
-        self.button_user_test1 = QPushButton('test1')
+        self.button_user_test1 = QPushButton('get traffic_sdi_dat')
         self.button_user_test2 = QPushButton('test2')
         self.button_user_test3 = QPushButton('test3')
         self.button_user_test4 = QPushButton('test4')
@@ -114,7 +115,6 @@ class FormWidget(QWidget):
         self.layout_function.addWidget(self.button_user_test2, 1, 1)
         self.layout_function.addWidget(self.button_user_test3, 2, 0)
         self.layout_function.addWidget(self.button_user_test4, 2, 1)
-
 
         #log layout
         self.layout_log = QGridLayout(self)
@@ -140,7 +140,10 @@ class FormWidget(QWidget):
         #connect event
         self.button_ssh_connect.clicked.connect(self.on_start)
         self.button_user_trigger.clicked.connect(self.on_trigger)
-        #self.button_user_test.clicked.connect(self.on_start)
+        self.button_user_test1.clicked.connect(self.on_get_traffic_dat)
+        #self.button_user_test2.clicked.connect(self.on_trigger)
+        #self.button_user_test3.clicked.connect(self.on_trigger)
+        self.button_user_test4.clicked.connect(self.test)
 
     # add event list
     def open_fileName_dialog(self):
@@ -153,17 +156,35 @@ class FormWidget(QWidget):
             logging.info('folder path is %s' %set_dir)
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        file_name, _ = QFileDialog.getOpenFileName(self,  "Open Logwork", set_dir, "Excel Files (*.xlsx)",options=options)
-        if file_name == '':
+        self.file_name, _ = QFileDialog.getOpenFileName(self, 'Open File', set_dir, '*' ,options=options)
+        if self.file_name == '':
             folder_path = set_dir
         else:
-            folder_path = os.path.dirname(file_name)
-        logging.debug('file path is %s' %file_name)
+            folder_path = os.path.dirname(self.file_name)
+        logging.debug('file path is %s' %self.file_name)
         logging.debug('folder path is %s' %folder_path)
         config_data['last_file_path']=folder_path
         logging.debug(config_data)
         config.save_config(config_data,config_path)
-        return file_name
+        return self.file_name
+    
+    def open_folder_name_dialog(self):
+        set_dir = config_data['last_file_path']
+        logging.info(set_dir)
+        if set_dir == '':
+            set_dir = os.path.join(os.path.expanduser('~'),'Desktop')
+        else:
+            logging.info('folder path is %s' %set_dir)
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        self.folder_name = QFileDialog.getExistingDirectory(self, "Select Directory",set_dir)
+        if self.folder_name == '':
+            pass
+        else:
+            config_data['last_file_path']=self.folder_name
+            logging.debug(config_data)
+            config.save_config(config_data,config_path)
+        return self.folder_name
 
     #set tread to change status bar and log browser
     def thread_for_one_sec(self):
@@ -206,6 +227,7 @@ class FormWidget(QWidget):
 
     
     @pyqtSlot()
+    #change project
     def on_project_clicked(self):
         radioButton = self.sender()
         if radioButton.isChecked():
@@ -214,13 +236,7 @@ class FormWidget(QWidget):
             logging_message.input_message(path = message_path, message = '%s is selected' %(self.project))
         return 0
 
-    def on_trigger(self):
-        if self.statusbar_status == "disconnected":
-            pass
-        if self.statusbar_status == "connected":
-            lines = mb_tools.make_trigger(self.ssh)
-            return 0
-    
+    #ssh connection start
     def on_start(self):
         def connect_ssh():
             logging.info('statusbar_status: %s' %self.statusbar_status)
@@ -249,12 +265,31 @@ class FormWidget(QWidget):
         if self.statusbar_status == 'disconnected':
             self.ssh = connect_ssh()
             return 0
-            
+    
+    def test(self):
+        self.file_path = self.open_folder_name_dialog()
+        logging.info(self.file_path)
+    
+    #==================================================================
+    #function start
+    def on_trigger(self):
+        if self.statusbar_status == "disconnected":
+            pass
+        if self.statusbar_status == "connected":
+            lines = mb_tools.make_trigger(self.ssh)
+            return 0
+    
+    def on_get_traffic_dat(self):
+        if self.statusbar_status == "disconnected":
+            pass
+        if self.statusbar_status == "connected":
+            traffic_sdi_dat = mb_data[current_project]['traffic_sdi_dat']
+            mb_tools.download_file(user,ip,traffic_sdi_dat,path='./static/temp/traffic')
+            return 0
 
-
             
             
-
+    #==================================================================
 
 
         
