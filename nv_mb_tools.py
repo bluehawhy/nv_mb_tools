@@ -58,7 +58,8 @@ def debug_app():
         user = mb_data['user']
         ssh = mb_tools.ssh_connect(ip,user)
         return ssh
-    path ='D:/_source/python/nv_mb_tools/static/temp/trigger'
+
+    path ='D:\LOG\\trace'
     mb_tools.extract_screenshot_from_trigger(path)
     
     return 0
