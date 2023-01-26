@@ -292,7 +292,6 @@ class FormWidget(QWidget):
             if self.statusbar_status == "disconnected":
                 pass
             if self.statusbar_status == "connected":
-                logging.info(self.current_project)
                 traffic_sdi_dat = mb_data[self.current_project]['traffic_sdi_dat']
                 mb_tools.get_traffic_sdi_dat(user,ip,traffic_sdi_dat,path='./static/temp/traffic')
                 return 0
