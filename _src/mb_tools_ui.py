@@ -27,9 +27,9 @@ mb_data =config.load_config(mb_path)
 
 ip = mb_data['ip']
 user = mb_data['user']
-current_project = ['None']
+project_list = ['None']
 if len(mb_data['project_list']) != 0:
-            current_project = mb_data['project_list']
+            project_list = mb_data['project_list']
 
 
 class MyMainWindow(QMainWindow):
@@ -55,7 +55,7 @@ class FormWidget(QWidget):
         super(FormWidget, self).__init__(parent)
         self.statusbar_status = 'disconnected'
         self.ssh = 0
-        self.project = 0
+        self.current_project = mb_data['current_project']
         self.logging_temp = None
         self.statusbar = statusbar
         self.initUI() 
@@ -76,9 +76,9 @@ class FormWidget(QWidget):
 
         #project layout
         self.layout_project = QHBoxLayout(self)    
-        logging.info('project list - %s' %str(current_project))
+        logging.info('project list - %s' %str(project_list))
         self.layout_project.addWidget(QLabel('project: '))
-        for project in current_project:
+        for project in project_list:
             self.radiobutton = QRadioButton(project)
             self.radiobutton.project = project
             self.radiobutton.toggled.connect(self.on_project_clicked)
@@ -231,9 +231,9 @@ class FormWidget(QWidget):
         radioButton = self.sender()
         if radioButton.isChecked():
             logging.debug("project is %s" % (radioButton.project))
-            self.project = radioButton.project
-            logging_message.input_message(path = message_path, message = '%s is selected' %(self.project))
-            mb_data['current_project']=self.project
+            self.current_project = radioButton.project
+            logging_message.input_message(path = message_path, message = '%s is selected' %(self.current_project))
+            mb_data['current_project']=self.current_project
             #logging.debug(mb_data)
             config.save_config(mb_data,mb_path)
         return 0
@@ -292,7 +292,8 @@ class FormWidget(QWidget):
             if self.statusbar_status == "disconnected":
                 pass
             if self.statusbar_status == "connected":
-                traffic_sdi_dat = mb_data[current_project]['traffic_sdi_dat']
+                logging.info(self.current_project)
+                traffic_sdi_dat = mb_data[self.current_project]['traffic_sdi_dat']
                 mb_tools.get_traffic_sdi_dat(user,ip,traffic_sdi_dat,path='./static/temp/traffic')
                 return 0
         thread_import = threading.Thread(target=start)
