@@ -42,7 +42,7 @@ class MyMainWindow(QMainWindow):
         self.show()
 
     def initUI(self):
-        self.statusBar().showMessage('')
+        self.statusBar().showMessage('00:00:00 - disconnected')
         self.setWindowTitle(self.title)
         self.setGeometry(200,200,800,600)
         #self.setFixedSize(600, 480)
@@ -293,7 +293,7 @@ class FormWidget(QWidget):
                 pass
             if self.statusbar_status == "connected":
                 traffic_sdi_dat = mb_data[current_project]['traffic_sdi_dat']
-                mb_tools.download_file(user,ip,traffic_sdi_dat,path='./static/temp/traffic')
+                mb_tools.get_traffic_sdi_dat(user,ip,traffic_sdi_dat,path='./static/temp/traffic')
                 return 0
         thread_import = threading.Thread(target=start)
         thread_import.start()
@@ -313,6 +313,14 @@ class FormWidget(QWidget):
     def on_extract_HU_screenshot(self):
         self.file_path = self.open_folder_name_dialog()
         logging.info(self.file_path)
+        def start():
+            if self.statusbar_status == "disconnected":
+                pass
+            if self.statusbar_status == "connected":
+                mb_tools.extract_screenshot_from_trigger(self.file_path)
+                return 0
+        thread_import = threading.Thread(target=start)
+        thread_import.start()
         return 0
     #==================================================================
 

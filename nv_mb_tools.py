@@ -58,13 +58,13 @@ def debug_app():
         user = mb_data['user']
         ssh = mb_tools.ssh_connect(ip,user)
         return ssh
-    ssh = get_ssh()
-    mb_tools.download_trigger(ssh)
+    path ='D:/_source/python/nv_mb_tools/static/temp/trigger'
+    mb_tools.extract_screenshot_from_trigger(path)
     
     return 0
 
     
     
 if __name__ =='__main__':
-    debug_app()
+    prod_app()
 
