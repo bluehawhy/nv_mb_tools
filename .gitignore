@@ -6,3 +6,4 @@ template/readMe/
 *.log
 output.txt
 test_cycle_template
+trigger*
