@@ -28,6 +28,8 @@ ip = mb_data['ip']
 user = mb_data['user']
 current_project = mb_data['current_project']
 
+## ============================================================
+## thosre are basic functions - refer to other functions
 def add_known_hosts(user,ip):
     os.system('del %s' %os.path.join(os.path.expanduser('~'),'.ssh','known_hosts'))
     command = 'ssh -o StrictHostKeyChecking=no %s@%s echo -n' %(user,ip)
@@ -46,9 +48,9 @@ def download_file(user,ip,file,path='./static/temp'):
 
 def ssh_connect(ip,user):
     logging.debug('ssh connection start')
+    add_known_hosts(user,ip)
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy)
-    add_known_hosts(user,ip)
     try:
         ssh.connect(ip, username=user, password="", timeout=10)    # 대상IP, User명, 패스워드 입력
         logging.debug('ssh connected. %s@%s' %(user,ip))    # ssh 정상 접속 후 메시지 출력
@@ -77,6 +79,11 @@ def send(ssh,command):
     lines = stdout.readlines()
     return lines
 
+## ============================================================
+
+## ============================================================
+## ============================================================
+## those are call functions from UI 
 def make_trigger(ssh):
     logging.debug('send user trigger.')
     stdin, stdout, stderr = ssh.exec_command(mb_data[current_project]['user_trigger'])
@@ -121,24 +128,8 @@ def get_version(ssh):
     #logging.debug(ui_ver)
     return hu_ver, sw_ver, map_ver, ui_ver
 
-def extract_png_from_tar(file_path):
-    logging.info('extract png from %s'%str(os.path.basename(file_path)))
-    logging_message.input_message(path = message_path, message = 'extract png from %s'%str(os.path.basename(file_path)))
-    command = 'tar -xvf %s -C static/temp/trigger/ *.png' %file_path
-    logging.info(command)
-    os.system(command)
-    return 0
 
-def extract_lz4(file_path):
-    #check lz4 already decompress.
-    if os.path.exists(file_path[:-4]) is True:
-        return 0 
-    lz4_path = 'static\lz4_win64_v1_9_4\lz4.exe'
-    command = '%s -frm %s' %(lz4_path,file_path)
-    logging.info('extract tar from %s'%str(os.path.basename(file_path)))
-    logging_message.input_message(path = message_path, message = 'extract tar from %s'%str(os.path.basename(file_path)))
-    os.system(command)
-    return 0
+
 
 def download_trigger(ssh):
     trigger_path =mb_data[current_project]['path_loca_trigger']
@@ -159,31 +150,61 @@ def download_trigger(ssh):
     logging_message.input_message(path = message_path, message = 'trigger downloading done!')
     return 0
 
-def extract_screenshot_from_trigger(path):
-    logging.info(path)
+
+def extract_png_from_tar(file_path):
+    command = 'tar -xvf %s -C %s *.png' %(file_path,os.path.dirname(os.path.abspath(file_path)))
+    logging.info(command)
+    os.system(command)
+    return 0
+
+def extract_lz4(file_path):
+    #check lz4 already decompress.
+    if os.path.exists(file_path[:-4]) is True:
+        logging.info('file already exist')
+        return 0 
+    lz4_path = 'static\lz4_win64_v1_9_4\lz4.exe'
+    command = '%s -frm %s' %(lz4_path,file_path)
+    os.system(command)
+    return 0
+
+def extract_screenshot_from_trigger(trigger_folder_path):
+    logging.info(trigger_folder_path)
     
     #extraf tar from lz4
-    files = os.listdir(path)
+    files = os.listdir(trigger_folder_path)
     for file in files:
         if str(file).split('.')[-1] == 'lz4':
-            extract_lz4('%s/%s' %(path,file))
+            extract_lz4('%s/%s' %(trigger_folder_path,file))
     logging.info('tar from lz4 done.')
    
     #extraf png from tar
-    files = os.listdir(path)
+    files = os.listdir(trigger_folder_path)
     for file in files:
         if str(file).split('.')[-1] == 'tar':
-            extract_png_from_tar('%s/%s' %(path,file))
+            extract_png_from_tar('%s/%s' %(trigger_folder_path,file))
     logging.info('png from tar done.')
 
-    #move png to path and remove folder.
-    for root, dirs, files in os.walk(path):
+    #move png to path and lz4 into subfolder.
+    logging.info(os.path.join(trigger_folder_path,'lz4'))
+    os.mkdir(os.path.join(trigger_folder_path,'lz4')) if not os.path.exists(os.path.join(trigger_folder_path,'lz4')) else None
+    for root, dirs, files in os.walk(trigger_folder_path):
         for file in files:
+            logging.info(file)
             if file.endswith(".png"):
-                os.replace(os.path.join(root, file),os.path.join(path, file))
-    onlyfolders = [f for f in os.listdir(path) if not os.path.isfile(os.path.join(path, f))]
+                os.replace(os.path.join(root, file),os.path.join(trigger_folder_path, file))
+            if file.endswith(".lz4"):
+                #print(os.path.join(root, file),os.path.join(trigger_folder_path,'lz4', file))
+                #os.replace(os.path.join(root, file),os.path.join(trigger_folder_path,'lz4', file))
+                pass
+            if file.endswith(".json"):
+                os.replace(os.path.join(root, file),os.path.join(trigger_folder_path,'lz4', file))
+
+    # remove screenshot folder.
+    onlyfolders = [f for f in os.listdir(trigger_folder_path) if not os.path.isfile(os.path.join(trigger_folder_path, f))]
     for onlyfor in onlyfolders:
-        shutil.rmtree(os.path.join(path,onlyfor))
+        if 'trigger' in onlyfor:
+            logging.info(onlyfor)
+            shutil.rmtree(os.path.join(trigger_folder_path,onlyfor))
     logging.info('extract screenshot from HU done!')
     logging_message.input_message(path = message_path, message = 'extract screenshot from HU done!')
     return 0
