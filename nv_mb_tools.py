@@ -1,12 +1,14 @@
+import os
 import sys
-import datetime
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtWidgets import QApplication
 
 from _src._api import logger, logging_message, config, license_key, license_login
 from _src import mb_tools, mb_tools_ui
 
-logging= logger.logger
+os.system("color 0A")
+os.system("mode con cols=70 lines=5")
 
+logging= logger.logger
 logging_file_name = logger.log_full_name
 
 version = 'MB Tool v0.1'
@@ -15,13 +17,9 @@ revision_list=[
     'v0.1 (2022-01-24) : proto type release (beta ver.)'
     ]
 
-
-
 config_path ='static\config\config.json'
 config_data =config.load_config(config_path)
 message_path = config_data['message_path']
-
-
 
 def function_app():
     logging_message.remove_message(message_path)
@@ -31,13 +29,14 @@ def function_app():
     app = QApplication(sys.argv)
     ex = mb_tools_ui.MyMainWindow(version)
     sys.exit(app.exec_())
+    return 0
 
 def login_app():
     app = QApplication(sys.argv)
     form = license_login.MyMainWindow()
     sys.exit(app.exec_())
+    return 0
 
-    
 def prod_app():
     license = license_key.check_License()
     lic_validation = license_key.valild_License(license)
