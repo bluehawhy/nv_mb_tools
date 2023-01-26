@@ -3,6 +3,9 @@
 import sqlite3
 import paramiko
 import os
+import datetime
+import shutil
+
 
 #add internal libary
 from _src._api import logger, config, logging_message
@@ -32,10 +35,12 @@ def add_known_hosts(user,ip):
     return 0
 
 def download_file(user,ip,file,path='./static/temp'):
-    add_known_hosts(user,ip)
+    if os.path.exists('%s/%s' %(path,os.path.basename(file))) is True:
+        logging.info('file already exist')
+        return 0 
     command = 'scp -q "%s@%s:%s" "%s"' %(user,ip,file,path)
+    #logging.debug(command)
     os.system(command)
-    logging.debug(command)
     download_path = os.path.join(path,os.path.basename(file))
     return download_path
 
@@ -43,6 +48,7 @@ def ssh_connect(ip,user):
     logging.debug('ssh connection start')
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+    add_known_hosts(user,ip)
     try:
         ssh.connect(ip, username=user, password="", timeout=10)    # 대상IP, User명, 패스워드 입력
         logging.debug('ssh connected. %s@%s' %(user,ip))    # ssh 정상 접속 후 메시지 출력
@@ -69,9 +75,7 @@ def check_ssh_connection(ssh):
 def send(ssh,command):
     stdin, stdout, stderr = ssh.exec_command(command)   # ssh 접속한 경로에 디렉토리 및 파일 리스트 확인 명령어 실행
     lines = stdout.readlines()
-    for i in lines:    # for문을 통해 명령어 결과값 출력.
-        re = str(i).replace('\n', '')
-        logging.debug(re)
+    return lines
 
 def make_trigger(ssh):
     logging.debug('send user trigger.')
@@ -87,6 +91,7 @@ def get_map_version():
     ip = mb_data['ip']
     user = mb_data['user']
     path = './static/temp'
+    
     downlaod_file_path = download_file(user,ip,file,path)
     con = sqlite3.connect(downlaod_file_path)
     cur = con.cursor()
@@ -97,6 +102,7 @@ def get_map_version():
     return map_ver
 
 def get_version(ssh):
+    logging.info('start get version')
     def get_each_version(command):
         ver = ''
         stdin, stdout, stderr = ssh.exec_command(command)
@@ -114,6 +120,78 @@ def get_version(ssh):
     #logging.debug(map_ver)
     #logging.debug(ui_ver)
     return hu_ver, sw_ver, map_ver, ui_ver
+
+def extract_png_from_tar(file_path):
+    logging.info('extract png from %s'%str(os.path.basename(file_path)))
+    logging_message.input_message(path = message_path, message = 'extract png from %s'%str(os.path.basename(file_path)))
+    command = 'tar -xvf %s -C static/temp/trigger/ *.png' %file_path
+    logging.info(command)
+    os.system(command)
+    return 0
+
+def extract_lz4(file_path):
+    #check lz4 already decompress.
+    if os.path.exists(file_path[:-4]) is True:
+        return 0 
+    lz4_path = 'static\lz4_win64_v1_9_4\lz4.exe'
+    command = '%s -frm %s' %(lz4_path,file_path)
+    logging.info('extract tar from %s'%str(os.path.basename(file_path)))
+    logging_message.input_message(path = message_path, message = 'extract tar from %s'%str(os.path.basename(file_path)))
+    os.system(command)
+    return 0
+
+def download_trigger(ssh):
+    trigger_path =mb_data[current_project]['path_loca_trigger']
+    logging.info(trigger_path)
+    trigger_lines = send(ssh,'ls %s' %trigger_path)
+    datetime_today = datetime.date.today()
+    str_today = datetime_today.strftime("%Y%m%d")
+    #logging.info(str_today)
+    download_path='./static/temp/trigger'
+    for li in trigger_lines:
+        trigger_file_name = str(li).replace('\n', '').replace('\r', '')
+        if len(trigger_file_name.split("_")) > 3 and trigger_file_name.split("_")[2] == "HU" and trigger_file_name.split("_")[3] >= str_today:
+            trigger_file_path = "%s/%s" %(trigger_path,trigger_file_name)
+            logging.info('downloading %s' %trigger_file_name)
+            logging_message.input_message(path = message_path, message = 'downloading %s' %trigger_file_name)
+            download_file(user,ip,trigger_file_path,path=download_path)
+    logging.info('trigger downloading done!')
+    logging_message.input_message(path = message_path, message = 'trigger downloading done!')
+    return 0
+
+def extract_screenshot_from_trigger(path):
+    logging.info(path)
+    
+    #extraf tar from lz4
+    files = os.listdir(path)
+    for file in files:
+        if str(file).split('.')[-1] == 'lz4':
+            extract_lz4('%s/%s' %(path,file))
+    logging.info('tar from lz4 done.')
+   
+    #extraf png from tar
+    files = os.listdir(path)
+    for file in files:
+        if str(file).split('.')[-1] == 'tar':
+            extract_png_from_tar('%s/%s' %(path,file))
+    logging.info('png from tar done.')
+
+    #move png to path and remove folder.
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if file.endswith(".png"):
+                os.replace(os.path.join(root, file),os.path.join(path, file))
+    onlyfolders = [f for f in os.listdir(path) if not os.path.isfile(os.path.join(path, f))]
+    for onlyfor in onlyfolders:
+        shutil.rmtree(os.path.join(path,onlyfor))
+    logging.info('extract screenshot from HU done!')
+    logging_message.input_message(path = message_path, message = 'extract screenshot from HU done!')
+    return 0
+    
+def get_traffic_sdi_dat(user,ip,traffic_sdi_dat,path='./static/temp/traffic'):
+    download_file(user,ip,traffic_sdi_dat,path='./static/temp/traffic')
+    return 0
+
 
 
 if __name__ == "__main__":
