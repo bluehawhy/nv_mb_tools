@@ -58,6 +58,7 @@ class FormWidget(QWidget):
         self.current_project = mb_data['current_project']
         self.logging_temp = None
         self.statusbar = statusbar
+        self.radio_button_list= []
         self.initUI() 
         self.show()
         self.timer_onescond = QTimer(self)
@@ -78,9 +79,13 @@ class FormWidget(QWidget):
         self.layout_project = QHBoxLayout(self)    
         logging.info('project list - %s' %str(project_list))
         self.layout_project.addWidget(QLabel('project: '))
+        
         for project in project_list:
             self.radiobutton = QRadioButton(project)
+            self.radio_button_list.append(self.radiobutton)
             self.radiobutton.project = project
+            if project == self.current_project:
+                self.radiobutton.setChecked(True)
             self.radiobutton.toggled.connect(self.on_project_clicked)
             self.layout_project.addWidget(self.radiobutton)
         
@@ -260,7 +265,8 @@ class FormWidget(QWidget):
                 temp_version = temp_version + 'Map version: %s' %map_ver +'\n'
                 temp_version = temp_version + 'UI version: %s' %ui_ver
                 self.qtext_ver_browser.setText(temp_version)
-                self.radiobutton.setEnabled(False)
+                for self.radiobutton in self.radio_button_list:
+                    self.radiobutton.setEnabled(False)
                 return self.ssh
             else:
                 #if ssh connected fail
