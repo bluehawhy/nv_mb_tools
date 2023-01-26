@@ -38,7 +38,7 @@ def add_known_hosts(user,ip):
 
 def download_file(user,ip,file,path='./static/temp'):
     if os.path.exists('%s/%s' %(path,os.path.basename(file))) is True:
-        logging.info('file already exist')
+        logging.info('file already exist - %s' %'%s/%s' %(path,os.path.basename(file)))
         return 0 
     command = 'scp -q "%s@%s:%s" "%s"' %(user,ip,file,path)
     #logging.debug(command)
@@ -148,6 +148,8 @@ def download_trigger(ssh):
             download_file(user,ip,trigger_file_path,path=download_path)
     logging.info('trigger downloading done!')
     logging_message.input_message(path = message_path, message = 'trigger downloading done!')
+    logging_message.input_message(path = message_path, message = 'downloading path - %s' %str(os.path.dirname(os.path.abspath((download_path)))))
+
     return 0
 
 
@@ -211,6 +213,8 @@ def extract_screenshot_from_trigger(trigger_folder_path):
     
 def get_traffic_sdi_dat(user,ip,traffic_sdi_dat,path='./static/temp/traffic'):
     download_file(user,ip,traffic_sdi_dat,path='./static/temp/traffic')
+    logging_message.input_message(path = message_path, message = 'traffic sdis downloading done!')
+    logging_message.input_message(path = message_path, message = 'downloading path - %s' %str(os.path.dirname(os.path.abspath((path)))))
     return 0
 
 
