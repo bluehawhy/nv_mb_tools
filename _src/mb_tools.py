@@ -52,7 +52,7 @@ def ssh_connect(ip,user):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy)
     try:
-        ssh.connect(ip, username=user, password="", timeout=10)    # 대상IP, User명, 패스워드 입력
+        ssh.connect(ip, username=user, password="", timeout=3)    # 대상IP, User명, 패스워드 입력
         logging.debug('ssh connected. %s@%s' %(user,ip))    # ssh 정상 접속 후 메시지 출력
         logging_message.input_message(path = message_path, message = 'connected - %s@%s' %(user,ip))
         return ssh
@@ -128,50 +128,47 @@ def get_version(ssh):
     #logging.debug(ui_ver)
     return hu_ver, sw_ver, map_ver, ui_ver
 
-
-
-
-def download_trigger(ssh):
+def download_trigger(ssh,folder_path='./static/temp/trigger'):
     trigger_path =mb_data[current_project]['path_loca_trigger']
     logging.info(trigger_path)
     trigger_lines = send(ssh,'ls %s' %trigger_path)
     datetime_today = datetime.date.today()
     str_today = datetime_today.strftime("%Y%m%d")
     #logging.info(str_today)
-    download_path='./static/temp/trigger'
     for li in trigger_lines:
         trigger_file_name = str(li).replace('\n', '').replace('\r', '')
         if len(trigger_file_name.split("_")) > 3 and trigger_file_name.split("_")[2] == "HU" and trigger_file_name.split("_")[3] >= str_today:
             trigger_file_path = "%s/%s" %(trigger_path,trigger_file_name)
             logging.info('downloading %s' %trigger_file_name)
             logging_message.input_message(path = message_path, message = 'downloading %s' %trigger_file_name)
-            download_file(user,ip,trigger_file_path,path=download_path)
+            download_file(user,ip,trigger_file_path,path=folder_path)
     logging.info('trigger downloading done!')
     logging_message.input_message(path = message_path, message = 'trigger downloading done!')
-    logging_message.input_message(path = message_path, message = 'downloading path - %s' %str(os.path.dirname(os.path.abspath((download_path)))))
+    logging_message.input_message(path = message_path, message = 'downloading path - %s' %folder_path)
 
     return 0
 
 
-def extract_png_from_tar(file_path):
-    command = 'tar -xvf %s -C %s *.png' %(file_path,os.path.dirname(os.path.abspath(file_path)))
+def extract_png_from_tar(file_path='./static/temp/trigger'):
+    command = 'tar -xvf "%s" -C "%s" *.png' %(file_path,os.path.dirname(os.path.abspath(file_path)))
     logging.info(command)
     os.system(command)
     return 0
 
-def extract_lz4(file_path):
+def extract_lz4(file_path='./static/temp/trigger'):
     #check lz4 already decompress.
     if os.path.exists(file_path[:-4]) is True:
         logging.info('file already exist')
         return 0 
     lz4_path = 'static\lz4_win64_v1_9_4\lz4.exe'
-    command = '%s -frm %s' %(lz4_path,file_path)
+    command = '%s -frm "%s"' %(lz4_path,file_path)
+    logging.info(command)
     os.system(command)
     return 0
 
-def extract_screenshot_from_trigger(trigger_folder_path):
+def extract_screenshot_from_trigger(trigger_folder_path='./static/temp/trigger'):
     logging.info(trigger_folder_path)
-    
+    logging_message.input_message(path = message_path, message = 'start to extract screenshot from HU done!')
     #extraf tar from lz4
     files = os.listdir(trigger_folder_path)
     for file in files:
@@ -209,12 +206,16 @@ def extract_screenshot_from_trigger(trigger_folder_path):
             shutil.rmtree(os.path.join(trigger_folder_path,onlyfor))
     logging.info('extract screenshot from HU done!')
     logging_message.input_message(path = message_path, message = 'extract screenshot from HU done!')
+    logging_message.input_message(path = message_path, message = 'downloading path - %s' %trigger_folder_path)
     return 0
     
 def get_traffic_sdi_dat(user,ip,traffic_sdi_dat,path='./static/temp/traffic'):
-    download_file(user,ip,traffic_sdi_dat,path='./static/temp/traffic')
-    logging_message.input_message(path = message_path, message = 'traffic sdis downloading done!')
-    logging_message.input_message(path = message_path, message = 'downloading path - %s' %str(os.path.dirname(os.path.abspath((path)))))
+    
+    if os.path.exists('%s/%s' %(path,os.path.basename(traffic_sdi_dat))) is True:
+        os.remove('%s/%s' %(path,os.path.basename(traffic_sdi_dat)))
+    download_file(user,ip,traffic_sdi_dat,path)
+    logging_message.input_message(path = message_path, message = 'traffic sdi downloading done!')
+    logging_message.input_message(path = message_path, message = 'downloading path - %s' %path)
     return 0
 
 
