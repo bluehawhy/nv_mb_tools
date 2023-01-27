@@ -5,8 +5,7 @@ from PyQt5.QtWidgets import QApplication
 from _src._api import logger, logging_message, config, license_key, license_login
 from _src import mb_tools, mb_tools_ui
 
-os.system("color 0A")
-os.system("mode con cols=70 lines=5")
+
 
 logging= logger.logger
 logging_file_name = logger.log_full_name
@@ -66,5 +65,10 @@ def debug_app():
     
     
 if __name__ =='__main__':
-    prod_app()
+    try:
+        os.system("color 0A")
+        os.system("mode con cols=70 lines=5")
+        prod_app()
+    except Exception as E:
+        logging_message.input_message(path = message_path,message = version)
 
