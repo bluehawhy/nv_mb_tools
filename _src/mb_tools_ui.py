@@ -58,7 +58,8 @@ class FormWidget(QWidget):
         self.current_project = mb_data['current_project']
         self.logging_temp = None
         self.statusbar = statusbar
-        self.radio_button_list= []
+        self.radio_button_group= []
+        self.function_button_group= []
         self.initUI() 
         self.show()
         self.timer_onescond = QTimer(self)
@@ -82,7 +83,7 @@ class FormWidget(QWidget):
         
         for project in project_list:
             self.radiobutton = QRadioButton(project)
-            self.radio_button_list.append(self.radiobutton)
+            self.radio_button_group.append(self.radiobutton)
             self.radiobutton.project = project
             if project == self.current_project:
                 self.radiobutton.setChecked(True)
@@ -110,15 +111,22 @@ class FormWidget(QWidget):
         #function layout
         self.layout_function = QGridLayout(self)
         self.button_user_trigger = QPushButton('user trigger')
+        self.function_button_group.append(self.button_user_trigger)
         self.button_get_traffic_sdi = QPushButton('get traffic_sdi_dat')
+        self.function_button_group.append(self.button_get_traffic_sdi)
         self.button_get_user_trigger = QPushButton('get user trigger from HU')
+        self.function_button_group.append(self.button_get_user_trigger)
         self.button_function_3 = QPushButton('test3')
-        self.button_extract_HU_screenshot = QPushButton('extract HU screenshot')
+        self.function_button_group.append(self.button_function_3)
+        self.button_function_4 = QPushButton('test4')
+        self.function_button_group.append(self.button_function_4)
         self.layout_function.addWidget(self.button_user_trigger, 0, 0)
         self.layout_function.addWidget(self.button_get_user_trigger, 1, 0)
-        self.layout_function.addWidget(self.button_extract_HU_screenshot, 2, 0)
+        self.layout_function.addWidget(self.button_function_4, 2, 0)
         self.layout_function.addWidget(self.button_get_traffic_sdi, 3, 0)
         self.layout_function.addWidget(self.button_function_3, 4, 0)
+        for self.button_function in self.function_button_group:
+            self.button_function.setEnabled(False)
         
 
         #log layout
@@ -148,7 +156,7 @@ class FormWidget(QWidget):
         self.button_get_traffic_sdi.clicked.connect(self.on_get_traffic_dat)
         self.button_get_user_trigger.clicked.connect(self.on_get_user_trigger)
         #self.button_function_3.clicked.connect(self.on_trigger)
-        self.button_extract_HU_screenshot.clicked.connect(self.on_extract_HU_screenshot)
+        self.button_function_4.clicked.connect(self.test4)
 
     # add event list
     def open_fileName_dialog(self):
@@ -175,7 +183,6 @@ class FormWidget(QWidget):
     
     def open_folder_name_dialog(self):
         set_dir = config_data['last_file_path']
-        logging.info(set_dir)
         if set_dir == '':
             set_dir = os.path.join(os.path.expanduser('~'),'Desktop')
         else:
@@ -225,6 +232,8 @@ class FormWidget(QWidget):
                 self.button_ssh_connect.setEnabled(True)
                 self.button_ssh_connect.setText('connect')
                 self.ssh = 0
+                for self.button_function in self.function_button_group:
+                    self.button_function.setEnabled(False)
                 logging_message.input_message(path = message_path, message = '%s@%s has been disconnected.' %('root',self.ip))
         check_status_ssh()
         return 0
@@ -265,8 +274,10 @@ class FormWidget(QWidget):
                 temp_version = temp_version + 'Map version: %s' %map_ver +'\n'
                 temp_version = temp_version + 'UI version: %s' %ui_ver
                 self.qtext_ver_browser.setText(temp_version)
-                for self.radiobutton in self.radio_button_list:
+                for self.radiobutton in self.radio_button_group:
                     self.radiobutton.setEnabled(False)
+                for self.button_function in self.function_button_group:
+                    self.button_function.setEnabled(True)
                 return self.ssh
             else:
                 #if ssh connected fail
@@ -274,11 +285,6 @@ class FormWidget(QWidget):
         if self.statusbar_status == 'disconnected':
             self.ssh = connect_ssh()
             return 0
-    
-    def test(self):
-        self.file_path = self.open_folder_name_dialog()
-        logging.info(self.file_path)
-        return 0
     
     #==================================================================
     #function start
@@ -294,39 +300,46 @@ class FormWidget(QWidget):
         return 0
 
     def on_get_traffic_dat(self):
-        def start():
-            if self.statusbar_status == "disconnected":
-                pass
-            if self.statusbar_status == "connected":
+        if self.statusbar_status == "disconnected":
+            pass
+        if self.statusbar_status == "connected":
+            self.folder_path = self.open_folder_name_dialog()
+            def start():
                 traffic_sdi_dat = mb_data[self.current_project]['traffic_sdi_dat']
-                mb_tools.get_traffic_sdi_dat(user,ip,traffic_sdi_dat,path='./static/temp/traffic')
+                mb_tools.get_traffic_sdi_dat(user,ip,traffic_sdi_dat,path=self.folder_path)
                 return 0
-        thread_import = threading.Thread(target=start)
-        thread_import.start()
+            thread_import = threading.Thread(target=start)
+            thread_import.start()
         return 0
 
     def on_get_user_trigger(self):
-        def start():
-            if self.statusbar_status == "disconnected":
-                pass
-            if self.statusbar_status == "connected":
-                mb_tools.download_trigger(self.ssh)
+        if self.statusbar_status == "disconnected":
+            pass
+        if self.statusbar_status == "connected":
+            self.folder_path = self.open_folder_name_dialog()
+            def start():
+                mb_tools.download_trigger(self.ssh,self.folder_path)
+                mb_tools.extract_screenshot_from_trigger(self.folder_path)
                 return 0
-        thread_import = threading.Thread(target=start)
-        thread_import.start()
+            thread_import = threading.Thread(target=start)
+            thread_import.start()
         return 0
     
-    def on_extract_HU_screenshot(self):
+    def test(self):
         self.file_path = self.open_folder_name_dialog()
         logging.info(self.file_path)
-        def start():
-            if self.statusbar_status == "disconnected":
-                pass
-            if self.statusbar_status == "connected":
-                mb_tools.extract_screenshot_from_trigger(self.file_path)
+        return 0
+
+    def test4(self):
+        if self.statusbar_status == "disconnected":
+            pass
+        if self.statusbar_status == "connected":
+            self.folder_path = self.open_folder_name_dialog()
+            def start():
+                mb_tools.extract_screenshot_from_trigger(self.folder_path)
                 return 0
-        thread_import = threading.Thread(target=start)
-        thread_import.start()
+            #thread_import = threading.Thread(target=start)
+            #thread_import.start()
         return 0
     #==================================================================
 
