@@ -1,0 +1,45 @@
+<!DOCTYPE StatisticsPlugin>
+<StatisticsPlugin>
+	<statistic name="Top 10 apid" info="Top 10 apid statistics" 
+		query="select count(apid), apid from msgs group by apid order by count(apid) desc limit 10"
+		type="categories"
+		title="top-10 apids"
+		axis_x="apids"
+		axis_y="msgs"
+	/>
+	<statistic name="assertions apid" info='assertions grouped by apid'
+		query='select count(apid), apid from msgs where payload like "%assert%" group by apid order by count(apid) desc'
+		type="categories"
+		title="apids with assertions"
+		axis_x="apids"
+		axis_y="assertions"
+	/>
+	<statistic name="apids with 'fault's" info="apids with 'fault's"
+		query='select count(apid), apid from msgs where payload like "%fault%" group by apid order by count(apid) desc'
+		type="categories"
+		title="apids with 'fault's"
+		axis_x="apids"
+		axis_y="faults"
+	/>
+	<statistic name="assertions by time" info="assertions grouped by time"
+		query='select count(*), time from msgs where payload like "%assert%" group by time order by time asc'
+		type="timebased"
+		title="assertions over time"
+		axis_x="time"
+		axis_y="assertions"
+	/>
+	<statistic name="msgs/sec" info="message distribution over time"
+		query='select count(*), time from msgs group by time order by time asc'
+		query_yellow='select count(*), time from msgs where payload like "%assert%" group by time order by time asc'
+		legend_yellow="assertions"
+		query_red='select count(*), time from msgs where payload like "%fault%" group by time order by time asc'
+		legend_red="faults"
+		type="timebased"
+		title="message distribution over time (incl. assertions and faults)"
+		axis_x="time"
+		axis_y="messages"
+	/>
+
+	
+	
+</StatisticsPlugin>

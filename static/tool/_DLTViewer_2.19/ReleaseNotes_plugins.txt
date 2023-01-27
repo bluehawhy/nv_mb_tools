@@ -1,0 +1,183 @@
+DLT Viewer  - Release Notes
+===========================
+Alexander Wenzel <Alexander.AW.Wenzel@bmw.de>
+
+Version
+-------
+Version 2.18.0 Release
+
+Date
+--------
+24.10.16
+
+Known issues
+------------
+
+  * none
+
+Changes
+-------
+
+2.18.0
+
+  * General
+    Changed pathes and name of used qwt library to be compatible with ubuntu 16.04.
+
+  * SomeIp Plugin 1.1.4
+    Displaying of someip messages with type ERROR.
+    Change displayed plugin name to enable plugin autoload feature
+    Segmented dlt messages and parser fix for position tag.
+    Header added to the error output. Fix for array deployment and
+     bitfields decoding.
+    Decoder extended with bitfield structs. Parser fix for event groups.
+    Workaround for missing coding ref for the enum datatypes.
+    Better error output and intance id added to the decoded text.
+    New method added to the test interface.
+    Message box with error text by parsing failure.
+    Decoded text of bitfields contains the binary number instead the int value.
+    Map test method added to the test interface.
+    Fix for MSVC
+    Header shown independantly from decoding result
+    More informative error descriptions
+    Redundand logs removed
+    Consideration of the codings as well by the creation of enum
+     deployment structs as workaround for missing utilization.
+    Fix for multi-dimensional arrays and new test method added to the
+    interface.
+    Use QT types instead of standard integers.
+    GLIPCI-1068: Use less verbose encoding for SOME/IP message type.
+    3 Tabs - Binary, Decoded and Control
+    Decoder, parser and fibex fixes. Workaround for some fields in the
+     fibex.
+    Text generation separated from decoding.
+    Decoded array parameters put as children of the array parameter.
+    SD decoder class incorporated. Simple output for SD massages.
+    Binary and Mixed representation adopted.
+    Class for easier text formatting added.
+    Addoption of displayed someip text, the representation in binary and
+     details tabs changed.
+    Improve Error message: show Service ID missing
+    Support vSomeIP version > 2.1.1
+
+  * Audiomanager Plugin
+    Qt 5.2 compatible QVector method call.
+    Offlinewidget UI reworked, spotlight views.
+    Adoptions soundproperties, new window with filtered traces.
+    Table view in the event statistic Window,
+     mainsoundproperty events, dump fix, volumecontrol status.
+    Fix decoded text for new connections and qwt object ownership issue.
+    Event statistics window
+    Actualization of the protobuf classes
+    Changing the row selection with click on the plot is disabled
+    Source and sink names appended to the column text in the connection/mainconnection view
+
+  * Lifecycle Plugin ( former dltnsmplugin ):
+    Fixed running reason and states display
+    Adopted to new NSM trace.
+    Add new NM message
+    New Lifecycles Widget
+    Added Shutdown Events
+    Update of Lifecycle Plugin
+    Cleanup and documentation
+    Lifecycle Plugin: Detect Lifecycles
+
+  * DLT KPI trace plugin
+    Fixed crash of dlt viewer in command line mode.
+
+
+2.17.0
+  * Added option to install Microsoft Visual C++ 2013 Redistributable with installer
+  * Fixed tiny bug when %DLT_VIEWER_SDK_DIR%\imageformats already exists
+  * Default build architecture of installer build script is now the same as the user's architecture (32 bit / 64 bit)
+  * Fixed missing icons issue in AudioManager plugin
+  * Implemented DltKpiTracePlugin
+  * Added shell script for qwt Linux installation
+  * Fixed build for Ubuntu 14.04
+
+2.16.0
+  * Fixed builds with qwt dependencies
+  * Hierarchical menu for volume controls and volume handlers, new plotter for the raw values and audiomanager configuration save/load
+  * Decoder plugin for SOME/IP messages implemented
+  * QT version set to 5.5.1
+  * Made MSVC 32bit and 64bit builds possible
+  * Resolving of soundproperties and mainsoundproperties in the detail windows and new log metainfo context for dynamicaly file loading
+  
+2.15.0
+  * Audiomanagerplugin: Length of log ID bitfield increased to 64 bit and log metadata is used 
+    instead of hardcoded texts
+  * Statisticsplugin: Fixed segfault in destructor
+  * Statisticsplugin: Niced up code formatting
+  * Added -std=gnu99, -std=gnu++11, -Wall and -Wextra compiler flags, pedantic still commented out yet
+
+2.14.0
+  * Update of TAF Plugin
+  * Segmented MOST messages now decoded at end message. Decoding at beginning not possible in live traces.
+  * Added support of protobuf to audiomanager
+  * Update qt to version 5.4.1.
+  * Volumecontrols state logging finished.
+  * Legend item color is changable throught a color picker.
+  * New logic for the volumecontrols ids.
+  * Audiomanagerplugin adopted to the new log types in PlugincontrolinterfaceBMW
+
+2.13.0
+  * Updated qwt to version 6.1.2
+  * Added hostname parameter to plugin interface stateChanged
+  * First version of XSTrace plugin.
+  * Fixed crash in MOST Plugin, when MOST Parameter type_cstream is used
+  * tafpipeplugin: Send Microseconds to TAF
+  * Fix MOST Plugin crashes when configuration file not exists.
+  * Changed installer working directory to DLT_VIEWER_SDK_DIR variable
+  * Fixed build script fails with double call
+  * Adoption to the new constants in projecttypes.h
+  * Fixed NSIS path on 64Bit Windows
+  * Fixed wrong node state in NSM plugin
+  * Installer: Create config directory and set access rights to all users.
+  * Changed configuration, cache and filters path. Create if not exist.
+  * Removed qwt from repository
+  * Updated qt to version 5.3.1
+  * Show complete timeline widget in autoscroll mode.
+  * Updated graphical system plugin.
+  * Added first version of graphical system plugin.
+  * Improved live view of timeline widget.
+
+2.12.0
+  * Used new timeline widget in statistic plugin.
+  * Improved and seperated timeline in nsm plugin.
+  * Fixed minimum size of nsm and statistics plugin.
+  * Updated TAF plugin.
+  * Added nsm plugin to build script.
+  * Fixed display in dltstatisticsplugin.
+  * Added qwtplot to dltnsmplugin.
+  * Added first NSM Plugin.
+  * Multi configuration file load in most plugin
+  * Fixed MOST plugin loading latest MOST FCat catalog.
+  * Multicore build.
+  * Fixed audiomanager plugin build Ubuntu 12.04 64Bit
+  * Updates of Audiomanager Plugin
+  * Moved DBus plugin to Open Source project.
+  * Added DLT Statistic plugin with qwt.
+  * Support multidimensional arrays in dbus plugin.
+  * GENDLT-228 Improvements of DBus Plugin
+  * Updated build script to Qt 5.3.
+  * Revert "Added Assert again in MOST Decoder."
+  * Removed generated Makefile in shmplugin.
+  * Fixed dltdbusplugin 64Bit build.
+
+2.11.0
+  * First version of Audio Manager plugin.
+  * Fixed Linux build
+  * First version of DLT DBus plugin
+  * Added Assert again in MOST Decoder
+  * GENDLT-96: Fixed crash of MOST plugin and decoder to load latest XML most catalog
+  * Update Qt SDK to version 5.2.1
+
+2.10.1
+  * no change
+
+2.10.0
+  * Added Installer for Jenkins.
+  * Improved windows build batch file for Qt5.
+  * Update plugins to new control plugin interface.
+  * Quickfix: disabled statistic plugin destructor which causes crash during shutdown.
+  * Changed to qwt 6.1.0 and ready to build with Qt5.1.1
+  * Removed most -Wunused warnings
