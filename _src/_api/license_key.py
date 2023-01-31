@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 
 import os, sys
-from os import path
 import datetime
 
 SHIFT = 27
@@ -22,6 +21,7 @@ def decrypt(raw):
     return ret
 
 def createLicense(raw):
+    os.makedirs('static/license') if not os.path.isdir('static/license') else None
     f = open("static/license/license.txt", 'w', encoding="utf-8")
     encrypted = encrypt(raw)
     f.write(encrypted)
@@ -30,7 +30,7 @@ def createLicense(raw):
 def check_License():
     license = {'user': 'user', 'date': '19000101'}
     license_path = os.path.join(os.path.dirname(sys.argv[0]),'static','license','license.txt')
-    if path.exists(license_path):
+    if os.path.exists(license_path):
         f = open(license_path, 'r', encoding="utf-8")
         line = f.readline()
         f.close()
