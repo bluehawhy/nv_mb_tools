@@ -6,7 +6,6 @@ import os
 import datetime
 import shutil
 
-
 #add internal libary
 from _src._api import logger, config, logging_message
 
@@ -24,8 +23,8 @@ test_cycle_url = config_data['test_cycle_url']
 mb_path = 'static\config\mb_command.json'
 mb_data =config.load_config(mb_path)
 
-ip = mb_data['ip']
 user = mb_data['user']
+ip = mb_data['ip']
 current_project = mb_data['current_project']
 
 ## ============================================================
@@ -36,15 +35,39 @@ def add_known_hosts(user,ip):
     os.system(command)
     return 0
 
-def download_file(user,ip,file,path='./static/temp'):
-    if os.path.exists('%s/%s' %(path,os.path.basename(file))) is True:
-        logging.info('file already exist - %s' %'%s/%s' %(path,os.path.basename(file)))
-        return 0 
-    command = 'scp -q "%s@%s:%s" "%s"' %(user,ip,file,path)
-    #logging.debug(command)
-    os.system(command)
-    download_path = os.path.join(path,os.path.basename(file))
-    return download_path
+def file_check_via_ssh(ssh=None,file=None):
+    command = f'ls {file}'
+    check_value = False
+    if ssh==None:
+        logging.info('need to connect ssh')
+    else:
+        filelists = send(ssh,command)
+        check_value = True if len(filelists) > 0 else False
+    return check_value
+    
+def file_check_via_console(user,ip,file):
+    command = f'ssh {user}@{ip} ls {file}'
+    check_value = False
+    logging.info(command)
+    return check_value
+
+
+def download_file(ssh,user,ip,file,path='./static/temp'):
+    loca_file_path = os.path.join(path,os.path.basename(file))
+    if os.path.exists(loca_file_path) is True:
+        logging.info(f'file already exist - {loca_file_path}')
+        return True
+    #check file exist.
+    check_value = file_check_via_ssh(ssh,file)
+    #logging.info(check_value)
+    if check_value is True:
+        command = 'scp -q "%s@%s:%s" "%s"' %(user,ip,file,path)
+        os.system(command)
+        download_path = os.path.join(path,os.path.basename(file))
+        return download_path
+    else:
+        logging.info('no file in target - %s/%s' %(path,os.path.basename(file)))
+        return False
 
 def ssh_connect(ip,user):
     logging.debug('ssh connection start')
@@ -77,6 +100,8 @@ def check_ssh_connection(ssh):
 def send(ssh,command):
     stdin, stdout, stderr = ssh.exec_command(command)   # ssh 접속한 경로에 디렉토리 및 파일 리스트 확인 명령어 실행
     lines = stdout.readlines()
+    #for line in lines:
+    #    logging.debug(line)
     return lines
 
 ## ============================================================
@@ -93,20 +118,7 @@ def make_trigger(ssh):
         logging_message.input_message(path = message_path, message = re)
     return 0
 
-def get_map_version():
-    file = config_data['dbpath']
-    ip = mb_data['ip']
-    user = mb_data['user']
-    path = './static/temp'
-    
-    downlaod_file_path = download_file(user,ip,file,path)
-    con = sqlite3.connect(downlaod_file_path)
-    cur = con.cursor()
-    fetch = cur.execute('select value, RegVersion from ProdStringListTable').fetchall()
-    map_ver = str(fetch[0][0])+"_"+str(fetch[0][1])
-    con.close()
-    os.system('del "%s"' %downlaod_file_path)
-    return map_ver
+
 
 def get_version(ssh):
     logging.info('start get version')
@@ -118,10 +130,34 @@ def get_version(ssh):
             re = str(i).replace('\n', '').replace('\r', '')
             ver = ver+re
         return ver
+    def get_map_version(ssh,user,ip):
+        map_path = mb_data[current_project]['dbpath']
+        path = './static/temp'
+        downlaod_file_path = download_file(ssh,user,ip,map_path,path)
+        if downlaod_file_path == False:
+            logging.info('there is no file')
+            return '-'
+        if downlaod_file_path == True:
+            del_file_path = os.path.join(path,os.path.basename(map_path))
+            logging.info(del_file_path)
+            os.remove(del_file_path)
+            downlaod_file_path = download_file(ssh,user,ip,map_path,path)
+        if downlaod_file_path != 0:    
+            con = sqlite3.connect(downlaod_file_path)
+            cur = con.cursor()
+            try:
+                fetch = cur.execute('select value, RegVersion from ProdStringListTable').fetchall()
+                map_ver = str(fetch[0][0])+"_"+str(fetch[0][1])
+            except:
+                map_ver = '-'
+            con.close()
+            os.remove(downlaod_file_path)
+            return map_ver
     hu_ver = get_each_version(mb_data[current_project]['hu_version'])
     sw_ver = get_each_version(mb_data[current_project]['sw_version'])
     map_ver = get_each_version(mb_data[current_project]['map_version'])
     ui_ver = get_each_version(mb_data[current_project]['ui_version'])
+    map_ver= get_map_version(ssh, user,ip)
     #logging.debug(hu_ver)
     #logging.debug(sw_ver)
     #logging.debug(map_ver)
@@ -130,6 +166,7 @@ def get_version(ssh):
 
 def download_trigger(ssh,folder_path='./static/temp/trigger'):
     trigger_path =mb_data[current_project]['path_loca_trigger']
+    ip = mb_data['ip']
     logging.info(trigger_path)
     trigger_lines = send(ssh,'ls %s' %trigger_path)
     datetime_today = datetime.date.today()
@@ -141,7 +178,7 @@ def download_trigger(ssh,folder_path='./static/temp/trigger'):
             trigger_file_path = "%s/%s" %(trigger_path,trigger_file_name)
             logging.info('downloading %s' %trigger_file_name)
             logging_message.input_message(path = message_path, message = 'downloading %s' %trigger_file_name)
-            download_file(user,ip,trigger_file_path,path=folder_path)
+            download_file(ssh,user,ip,trigger_file_path,path=folder_path)
     logging.info('trigger downloading done!')
     logging_message.input_message(path = message_path, message = 'trigger downloading done!')
     logging_message.input_message(path = message_path, message = 'downloading path - %s' %folder_path)
@@ -158,7 +195,7 @@ def extract_png_from_tar(file_path='./static/temp/trigger'):
 def extract_lz4(file_path='./static/temp/trigger'):
     #check lz4 already decompress.
     if os.path.exists(file_path[:-4]) is True:
-        logging.info('file already exist')
+        logging.info(f'file already exist - {file_path}')
         return 0 
     lz4_path = 'static\lz4_win64_v1_9_4\lz4.exe'
     command = '%s -frm "%s"' %(lz4_path,file_path)
@@ -209,11 +246,11 @@ def extract_screenshot_from_trigger(trigger_folder_path='./static/temp/trigger')
     logging_message.input_message(path = message_path, message = 'downloading path - %s' %trigger_folder_path)
     return 0
     
-def get_traffic_sdi_dat(user,ip,traffic_sdi_dat,path='./static/temp/traffic'):
+def get_traffic_sdi_dat(ssh,user,ip,traffic_sdi_dat,path='./static/temp/traffic'):
     
     if os.path.exists('%s/%s' %(path,os.path.basename(traffic_sdi_dat))) is True:
         os.remove('%s/%s' %(path,os.path.basename(traffic_sdi_dat)))
-    download_file(user,ip,traffic_sdi_dat,path)
+    download_file(ssh,user,ip,traffic_sdi_dat,path)
     logging_message.input_message(path = message_path, message = 'traffic sdi downloading done!')
     logging_message.input_message(path = message_path, message = 'downloading path - %s' %path)
     return 0

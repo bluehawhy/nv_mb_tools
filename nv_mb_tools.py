@@ -13,7 +13,8 @@ logging_file_name = logger.log_full_name
 version = 'MB Tool v0.1'
 revision_list=[
     'Revision list',
-    'v0.1 (2022-01-24) : proto type release (beta ver.)'
+    'v0.1 (2022-01-24) : proto type release (beta ver.)',
+    'v0.2 (2022-01-27) : \nmerge download trigger and extract sreenshot (beta ver.)\ndisable function button when running.'
     ]
 
 config_path ='static\config\config.json'
@@ -22,9 +23,9 @@ message_path = config_data['message_path']
 
 def function_app():
     logging_message.remove_message(message_path)
-    logging_message.input_message(path = message_path,message = version)
+    logging_message.input_message(path = message_path,message = version, settime=False)
     for revision in revision_list:
-        logging_message.input_message(path = message_path,message = revision)
+        logging_message.input_message(path = message_path,message = revision, settime=False)
     app = QApplication(sys.argv)
     ex = mb_tools_ui.MyMainWindow(version)
     sys.exit(app.exec_())
@@ -39,6 +40,8 @@ def login_app():
 def prod_app():
     license = license_key.check_License()
     lic_validation = license_key.valild_License(license)
+    os.system('color 0A') if license['user'] != 'miskang' else None
+    os.system('mode con cols=70 lines=5') if license['user'] != 'miskang' else None
     if lic_validation == True:
         logging.info('license is valild - %s' %str(license))
         function_app()
@@ -57,18 +60,12 @@ def debug_app():
         ssh = mb_tools.ssh_connect(ip,user)
         return ssh
 
-    path ='D:\LOG\\trace'
-    mb_tools.extract_screenshot_from_trigger(path)
-    
     return 0
-
-    
     
 if __name__ =='__main__':
     try:
-        os.system("color 0A")
-        os.system("mode con cols=70 lines=5")
         prod_app()
     except Exception as E:
-        logging_message.input_message(path = message_path,message = version)
+        logging.info(E)
+        logging_message.input_message(path = message_path,message = str(E))
 
