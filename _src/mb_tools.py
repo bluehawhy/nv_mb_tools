@@ -51,6 +51,17 @@ def file_check_via_console(user,ip,file):
     logging.info(command)
     return check_value
 
+def get_tmp_screenshot(user = 'root',ip=None,file='/tmp/eel-screenshot.png.png',path='./static/temp',time=None):
+    command = 'scp -q "%s@%s:%s" "%s"' %(user,ip,file,path)
+    os.system(command)
+    if time is None:
+        time = str(datetime.datetime.now())
+    time = str(time).replace(' ','_').replace(':','_')
+    download_path = f'{path}/{os.path.basename(file)}'
+    change_path = f'{path}/screenshot_{time}_.png'
+    #os.system(f'rename "{download_path}" "{change_path}"')
+    os.rename(download_path,change_path)
+    return 0
 
 def download_file(ssh,user,ip,file,path='./static/temp'):
     loca_file_path = os.path.join(path,os.path.basename(file))
@@ -68,6 +79,13 @@ def download_file(ssh,user,ip,file,path='./static/temp'):
     else:
         logging.info('no file in target - %s/%s' %(path,os.path.basename(file)))
         return False
+
+def uploadfile(user,ip,path_pc,path_target):
+    command = f'scp -q {path_pc} {user}@{ip}:{path_target}'
+    logging.info(command)
+    logging_message.input_message(path = message_path, message = f'upload {path_pc} into {user}@{ip}:{path_target}')
+    os.system(command)
+    return 0
 
 def ssh_connect(ip,user):
     logging.debug('ssh connection start')
@@ -109,14 +127,40 @@ def send(ssh,command):
 ## ============================================================
 ## ============================================================
 ## those are call functions from UI 
+def change_binary(user,ip,path_pc):
+    #check binary exist
+    filelist = os.listdir(path_pc)
+    if 'nv_main' not in filelist:
+        logging.info(f'there is no navi binary')
+        logging_message.input_message(path = message_path, message = f'there is no navi binary')
+        return 0
+    #how to change binary
+    logging_message.input_message(path = message_path, message = f'start change binary')
+    commands = mb_data[current_project]['change_binary']
+    for commd in commands:
+        if "copy new sw" not in commd:
+            cmd = f'ssh {user}@{ip} "{commd}"'
+            logging.info(f'send command {cmd}')
+            os.system(cmd)
+        else:
+            logging.info(f'start copy binary{commd}')
+            path_target = commd.split("'")[-2]
+            logging.info(f'target path = {path_target}')
+            for navi_bi in filelist:
+                pc_file_path = os.path.join(path_pc,navi_bi)
+                uploadfile(user,ip,pc_file_path,path_target)
+    logging_message.input_message(path = message_path, message = f'change binary done.')
+    return 0
+
 def make_trigger(ssh):
     logging.debug('send user trigger.')
     stdin, stdout, stderr = ssh.exec_command(mb_data[current_project]['user_trigger'])
     lines = stdout.readlines()
+    now = datetime.datetime.now()
     for line in lines:    # for문을 통해 명령어 결과값 출력.
         re = str(line).replace('\n', '')
         logging_message.input_message(path = message_path, message = re)
-    return 0
+    return now, lines
 
 
 
@@ -130,6 +174,7 @@ def get_version(ssh):
             re = str(i).replace('\n', '').replace('\r', '')
             ver = ver+re
         return ver
+
     def get_map_version(ssh,user,ip):
         map_path = mb_data[current_project]['dbpath']
         path = './static/temp'
@@ -169,8 +214,7 @@ def download_trigger(ssh,folder_path='./static/temp/trigger'):
     ip = mb_data['ip']
     logging.info(trigger_path)
     trigger_lines = send(ssh,'ls %s' %trigger_path)
-    datetime_today = datetime.date.today()
-    str_today = datetime_today.strftime("%Y%m%d")
+    str_today = datetime.date.today().strftime("%Y%m%d")
     #logging.info(str_today)
     for li in trigger_lines:
         trigger_file_name = str(li).replace('\n', '').replace('\r', '')

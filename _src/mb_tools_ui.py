@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from multiprocessing.dummy import current_process
 import os
 import threading
 import time
@@ -46,7 +47,7 @@ class MyMainWindow(QMainWindow):
         self.statusBar().showMessage('00:00:00 - disconnected')
         self.setWindowTitle(self.title)
         self.setGeometry(200,200,800,600)
-        self.setFixedSize(800,600)
+        #self.setFixedSize(800,600)
         self.form_widget = FormWidget(self, self.statusBar())
         self.setCentralWidget(self.form_widget)
 
@@ -62,14 +63,15 @@ class FormWidget(QWidget):
         self.statusbar = statusbar
         self.radio_button_group= []
         self.function_button_group= []
+        self.function_group= []
         self.initUI() 
         self.show()
         self.timer_onescond = QTimer(self)
         self.timer_onescond.timeout.connect(self.thread_for_one_sec)
         self.timer_onescond.start(1000)
         self.timer_tenscond = QTimer(self)
-        self.timer_tenscond.timeout.connect(self.thread_for_ten_sec)
-        self.timer_tenscond.start(10000)
+        self.timer_tenscond.timeout.connect(self.thread_for_sixteen_sec)
+        self.timer_tenscond.start(60000)
         
 
     def initUI(self):
@@ -113,32 +115,67 @@ class FormWidget(QWidget):
         
         #add path field.
         self.layout_path = QVBoxLayout(self)
+        self.layout_path_1 = QHBoxLayout(self)
         self.qline_path = QLineEdit(self.set_dir)
-        self.qline_path.setReadOnly(False)
-        self.qline_path.setFixedHeight(30)
         self.label_path = QLabel('current path')
+        self.button_open_folder = QPushButton('open folder')
+        self.function_group.append(self.qline_path)
+        self.qline_path.setFixedHeight(30)
         self.label_path.setFixedHeight(30)
+        self.button_open_folder.setFixedSize(100,30)
+        self.layout_path_1.addWidget(self.qline_path)
+        self.layout_path_1.addWidget(self.button_open_folder)
         self.layout_path.addWidget(self.label_path)
-        self.layout_path.addWidget(self.qline_path)
+        self.layout_path.addLayout(self.layout_path_1)
+        
 
         #function layout
-        self.layout_function = QGridLayout(self)
+        self.layout_function = QVBoxLayout(self)
+        
+        #function layout for number
+        self.layout_function_line = QHBoxLayout(self)
+        self.label_function = QLabel('select number and enter (1~8):')
+        self.qline_function = QLineEdit('')
+        self.layout_function_line.addWidget(self.label_function)
+        self.layout_function_line.addWidget(self.qline_function)
+        
+        
+
+        self.layout_function_button = QGridLayout(self)
         self.button_user_trigger = QPushButton('user trigger')
-        self.function_button_group.append(self.button_user_trigger)
         self.button_get_traffic_sdi = QPushButton('get traffic_sdi_dat')
-        self.function_button_group.append(self.button_get_traffic_sdi)
-        self.button_get_user_trigger = QPushButton('get user trigger from HU')
-        self.function_button_group.append(self.button_get_user_trigger)
-        self.button_extract_screenshot_from_HU = QPushButton('extract screenshot from HU')
-        self.function_button_group.append(self.button_extract_screenshot_from_HU)
-        self.button_function_4 = QPushButton('test')
-        self.function_button_group.append(self.button_function_4)
-        self.layout_function.addWidget(self.button_user_trigger, 0, 0)
-        self.layout_function.addWidget(self.button_get_user_trigger, 0, 1)
-        self.layout_function.addWidget(self.button_get_traffic_sdi, 3, 0)
-        self.layout_function.addWidget(self.button_extract_screenshot_from_HU, 4, 0)
-        self.layout_function.addWidget(self.button_function_4, 2, 0)
-        for self.button_function in self.function_button_group:
+        
+        self.button_extract_screenshot_from_HU = QPushButton('extract screenshot')
+        self.button_test2 = QPushButton('test 2')
+        self.button_test4 = QPushButton('test 4')
+        self.button_test8 = QPushButton('test 8')
+        self.button_open_port = QPushButton('open port\n disable firewall')
+        self.button_change_binary = QPushButton('change binary')
+        self.layout_function_button.addWidget(self.button_user_trigger, 0, 0)
+        self.layout_function_button.addWidget(self.button_test8, 3, 1)
+        self.layout_function_button.addWidget(self.button_get_traffic_sdi, 2, 0)
+        self.layout_function_button.addWidget(self.button_extract_screenshot_from_HU, 3, 0)
+        self.layout_function_button.addWidget(self.button_test2, 0, 1)
+        self.layout_function_button.addWidget(self.button_test4, 1, 1)
+        self.layout_function_button.addWidget(self.button_open_port, 2, 1)
+        self.layout_function_button.addWidget(self.button_change_binary, 1, 0)
+        self.layout_function.addLayout(self.layout_function_line)
+        self.layout_function.addLayout(self.layout_function_button)
+
+        
+        #set functional group
+        self.function_group.append(self.button_user_trigger)
+        self.function_group.append(self.button_get_traffic_sdi)
+        self.function_group.append(self.button_test8)
+        self.function_group.append(self.button_extract_screenshot_from_HU)
+        self.function_group.append(self.button_test2)
+        self.function_group.append(self.button_test4)
+        self.function_group.append(self.button_open_port)
+        self.function_group.append(self.button_change_binary)
+        self.function_group.append(self.qline_function)
+
+        
+        for self.button_function in self.function_group:
             self.button_function.setEnabled(False)
         self.button_extract_screenshot_from_HU.setEnabled(True)
 
@@ -166,12 +203,19 @@ class FormWidget(QWidget):
         self.layout_fun.setAlignment(Qt.AlignTop)
         
         #connect event
-        self.button_ssh_connect.clicked.connect(self.on_start)
+        self.qline_function.returnPressed.connect(self.on_start_function_number)
+        self.button_ssh_connect.clicked.connect(self.on_start_connect_ssh)
+        self.line_ip.returnPressed.connect(self.on_start_connect_ssh)
+        self.qline_path.returnPressed.connect(self.on_change_path)
         self.button_user_trigger.clicked.connect(self.on_trigger)
         self.button_get_traffic_sdi.clicked.connect(self.on_get_traffic_dat)
-        self.button_get_user_trigger.clicked.connect(self.on_get_user_trigger)
-        self.button_extract_screenshot_from_HU.clicked.connect(self.extract_screenshot_from_HU)
-        self.button_function_4.clicked.connect(self.test)
+        self.button_extract_screenshot_from_HU.clicked.connect(self.on_extract_screenshot_from_HU)
+        self.button_open_port.clicked.connect(self.on_open_port)
+        self.button_test2.clicked.connect(self.on_test)
+        self.button_test4.clicked.connect(self.on_test)
+        self.button_test8.clicked.connect(self.on_test)
+        self.button_open_folder.clicked.connect(self.on_open_folder)
+        self.button_change_binary.clicked.connect(self.on_change_binary)
 
     # add event list
     def open_fileName_dialog(self):
@@ -196,21 +240,30 @@ class FormWidget(QWidget):
     def open_folder_name_dialog(self):
         self.set_dir = config_data['last_file_path']
         if self.set_dir == '':
-            self.set_dir = os.path.join(os.path.expanduser('~'),'Desktop')
+            temp_folder = os.path.join(os.path.expanduser('~'),'Desktop')
         else:
             logging.info('folder path is %s' %self.set_dir)
+            temp_folder = self.set_dir
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        self.folder_name = QFileDialog.getExistingDirectory(self, "Select Directory",self.set_dir)
-        if self.folder_name == '':
+        temp_folder = QFileDialog.getExistingDirectory(self, "Select Directory",temp_folder)
+        if temp_folder == '':
             pass
         else:
-            config_data['last_file_path']=self.folder_name
+            config_data['last_file_path']=temp_folder
             config.save_config(config_data,config_path)
-        return self.folder_name
+        return temp_folder
+
+    def open_folder_name_dialog_no_save(self):
+        temp_folder = os.path.join(os.path.expanduser('~'),'Desktop')
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        temp_folder = QFileDialog.getExistingDirectory(self, "Select Directory",temp_folder)
+        return temp_folder
+
 
     def set_function_button(self,value=True):
-        for self.button_function in self.function_button_group:
+        for self.button_function in self.function_group:
             self.button_function.setEnabled(value)
         return 0
     #set tread to change status bar and log browser
@@ -235,7 +288,7 @@ class FormWidget(QWidget):
         show_logging()
         return 0
     
-    def thread_for_ten_sec(self):
+    def thread_for_sixteen_sec(self):
         def check_status_ssh():
             self.ssh_status = mb_tools.check_ssh_connection(self.ssh)
             #logging.debug('statusbar %s - ssh status %s' %(str(self.statusbar_status),str(self.ssh_status)))
@@ -256,8 +309,15 @@ class FormWidget(QWidget):
             self.set_dir = config_data['last_file_path']
             self.qline_path.setText(self.set_dir)
         
+        def check_version():
+            if self.statusbar_status == "disconnected":
+                pass
+            if self.statusbar_status == "connected":
+                self.call_version_into_textbox()
+        
         check_status_ssh()
         check_current_path()
+        check_version()
         return 0
 
     
@@ -275,7 +335,7 @@ class FormWidget(QWidget):
         return 0
 
     #ssh connection start
-    def on_start(self):
+    def on_start_connect_ssh(self):
         def connect_ssh():
             logging.info('statusbar_status: %s' %self.statusbar_status)
             self.ip = self.line_ip.text()
@@ -284,31 +344,14 @@ class FormWidget(QWidget):
             if self.ssh != 0:
                 mb_data['ip'] = self.ip
                 config.save_config(mb_data,mb_path)
-                self.statusbar_status = 'connected'
-                self.button_ssh_connect.setText('connected')
                 self.line_ip.setReadOnly(True)
                 self.button_ssh_connect.setEnabled(False)
-                hu_ver, sw_ver, map_ver, ui_ver = mb_tools.get_version(self.ssh)
-                temp_version = ''
-                temp_version = temp_version + 'HU version: %s' %hu_ver +'\n'
-                temp_version = temp_version + 'Navi version: %s' %sw_ver +'\n'
-                temp_version = temp_version + 'Map version: %s' %map_ver +'\n'
-                temp_version = temp_version + 'UI version: %s' %ui_ver
-                self.qtext_ver_browser.setText(temp_version)
+                self.call_version_into_textbox()
                 for self.radiobutton in self.radio_button_group:
                     self.radiobutton.setEnabled(False)
                 self.set_function_button(True)
-
-                self.qline_path.setReadOnly(True)
-                self.folder_name = self.qline_path.text()
-                if os.path.isdir(self.folder_name):
-                    config_data['last_file_path']=self.folder_name
-                    config.save_config(config_data,config_path)
-                else:
-                    self.set_dir = config_data['last_file_path']
-                    self.qline_path.setText(self.set_dir)
-                    logging_message.input_message(path = message_path, message = f'{self.folder_name} is invalid.')
-                    logging_message.input_message(path = message_path, message = f'current path - {self.set_dir}')
+                self.statusbar_status = 'connected'
+                self.button_ssh_connect.setText('connected')
                 return self.ssh
             else:
                 #if ssh connected fail
@@ -319,15 +362,96 @@ class FormWidget(QWidget):
     
     #==================================================================
     #function start
+    def call_version_into_textbox(self):
+        hu_ver, sw_ver, map_ver, ui_ver = mb_tools.get_version(self.ssh)
+        temp_version = ''
+        temp_version = temp_version + 'HU version: %s' %hu_ver +'\n'
+        temp_version = temp_version + 'Navi version: %s' %sw_ver +'\n'
+        temp_version = temp_version + 'Map version: %s' %map_ver +'\n'
+        temp_version = temp_version + 'UI version: %s' %ui_ver
+        self.qtext_ver_browser.setText(temp_version)
+        return 0
+
+    def on_start_function_number(self):
+        self.function_number = self.qline_function.text()
+        logging_message.input_message(path = message_path, message = f'you entered {self.function_number}')
+        if self.statusbar_status == "disconnected":
+             self.qline_function.setText('')
+             return 0
+        if not self.function_number.isdigit():
+            logging_message.input_message(path = message_path, message = f'please enter number.')
+            self.qline_function.setText('')
+            return 0
+        self.function_number = int(self.qline_function.text())
+        if self.function_number == 99:
+            logging_message.input_message(path = message_path, message = f'hidden one. get HU trigger from HU')
+            self.on_get_user_trigger()
+            self.qline_function.setText('')
+            return 0
+        if self.function_number > 8:
+            logging_message.input_message(path = message_path, message = f'please enter number under 8.')
+            self.qline_function.setText('')
+            return 0
+        else:
+            self.on_trigger() if self.function_number == 1 else None
+            None if self.function_number == 2 else None
+            self.on_change_binary() if self.function_number == 3 else None
+            None if self.function_number == 4 else None
+            None if self.function_number == 5 else None
+            self.on_open_port() if self.function_number == 6 else None
+            self.on_extract_screenshot_from_HU() if self.function_number == 7 else None
+            None if self.function_number == 8 else None
+            self.qline_function.setText('')
+        return 0
+    def on_open_folder(self):
+        os.startfile(self.set_dir)
+        return 0
+    
+    def on_change_binary(self):
+        self.folder_name = self.open_folder_name_dialog_no_save()
+        logging_message.input_message(path = message_path, message = f'folder path - {self.folder_name}')
+        def start():
+            if self.folder_name != '':
+                self.set_function_button(False)
+                mb_tools.change_binary(user,ip,self.folder_name)
+                self.set_function_button(True)
+                
+                return 0
+            else:
+                return 0
+        thread_import = threading.Thread(target=start)
+        thread_import.start()
+        return 0
+        
+    def on_change_path(self):
+        self.check_folder_name = self.qline_path.text()
+        if os.path.isdir(self.check_folder_name) == True:
+            config_data['last_file_path']=self.check_folder_name
+            config.save_config(config_data,config_path)
+            logging_message.input_message(path = message_path, message = f'change path - {self.check_folder_name}')
+        else:
+            self.qline_path.setText(self.set_dir)
+            logging_message.input_message(path = message_path, message = f'path is not exist - {self.check_folder_name}')
+        return 0
+    
+    def on_open_port(self):
+        logging.info('start open port or firewall disable')
+        logging_message.input_message(path = message_path, message = f'start open port or firewall disable')
+        cmd = mb_data[self.current_project]['open_port']
+        #logging.info(cmd)
+        mb_tools.send(self.ssh,cmd)
+        return 0
+
+    
     def on_trigger(self):
+        logging_message.input_message(path = message_path, message = f'start make trigger.')
         def start():
             if self.statusbar_status == "disconnected":
                 pass
             if self.statusbar_status == "connected":
-                lines = mb_tools.make_trigger(self.ssh)
-                time.sleep(30)
-                mb_tools.download_trigger(self.ssh,self.set_dir)
-                mb_tools.extract_screenshot_from_trigger(self.set_dir)
+                now, lines = mb_tools.make_trigger(self.ssh)
+                time.sleep(20)
+                mb_tools.get_tmp_screenshot(ip=self.ip,path=self.set_dir,time=now)
                 return 0
         thread_import = threading.Thread(target=start)
         thread_import.start()
@@ -370,15 +494,20 @@ class FormWidget(QWidget):
             thread_import.start()
         return 0
     
-    def test(self):
-        self.file_path = self.open_folder_name_dialog()
-        logging.info(self.file_path)
+    def on_test(self):
+        logging_message.input_message(path = message_path, message = f'test button')
         return 0
 
-    def extract_screenshot_from_HU(self):
+    def on_extract_screenshot_from_HU(self):
         self.folder_path = self.open_folder_name_dialog()
         def start():
-            mb_tools.extract_screenshot_from_trigger(self.folder_path)
+            if self.folder_path =='':
+                pass
+            else:
+                self.set_function_button(False)
+                mb_tools.extract_screenshot_from_trigger(self.folder_path)
+                self.set_function_button(True)
+            return 0
         thread_import = threading.Thread(target=start)
         thread_import.start()
         return 0

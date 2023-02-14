@@ -1,3 +1,4 @@
+from doctest import master
 import os
 import sys
 from PyQt5.QtWidgets import QApplication
@@ -10,11 +11,12 @@ from _src import mb_tools, mb_tools_ui
 logging= logger.logger
 logging_file_name = logger.log_full_name
 
-version = 'MB Tool v0.1'
+version = 'MB Tool v0.3'
 revision_list=[
     'Revision list',
     'v0.1 (2022-01-24) : proto type release (beta ver.)',
-    'v0.2 (2022-01-27) : \nmerge download trigger and extract sreenshot (beta ver.)\ndisable function button when running.'
+    'v0.2 (2022-01-27) : merge download trigger and extract sreenshot (beta ver.)\ndisable function button when running.',
+    'v0.3 (2022-02-14) : add change binary and open firewall, port'
     ]
 
 config_path ='static\config\config.json'
@@ -52,14 +54,6 @@ def prod_app():
 
 
 def debug_app():
-    def get_ssh():
-        mb_path = 'static\config\mb_command.json'
-        mb_data =config.load_config(mb_path)
-        ip = mb_data['ip']
-        user = mb_data['user']
-        ssh = mb_tools.ssh_connect(ip,user)
-        return ssh
-
     return 0
     
 if __name__ =='__main__':
