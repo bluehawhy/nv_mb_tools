@@ -31,28 +31,43 @@ current_project = mb_data['current_project']
 ## thosre are basic functions - refer to other functions
 def add_known_hosts(user,ip):
     os.system('del %s' %os.path.join(os.path.expanduser('~'),'.ssh','known_hosts'))
-    command = 'ssh -o StrictHostKeyChecking=no %s@%s echo -n' %(user,ip)
-    os.system(command)
+    send_by_plink(user,ip,'exit')
     return 0
-
-def file_check_via_ssh(ssh=None,file=None):
-    command = f'ls {file}'
-    check_value = False
-    if ssh==None:
-        logging.info('need to connect ssh')
-    else:
-        filelists = send(ssh,command)
-        check_value = True if len(filelists) > 0 else False
-    return check_value
     
-def file_check_via_console(user,ip,file):
-    command = f'ssh {user}@{ip} ls {file}'
+def send_by_ssh(ssh,command): #return type : str
+    stdin, stdout, stderr = ssh.exec_command(command)   # ssh 접속한 경로에 디렉토리 및 파일 리스트 확인 명령어 실행
+    lines = stdout.readlines()
+    temp_line =''
+    for line in lines:
+        #logging.debug(line)
+        temp_line = temp_line + line
+    return temp_line 
+
+def send_by_plink(user,ip,command): #return type : str
+    command = f'static\\tool\putty\plink.exe {user}@{ip} "{command}" > static\\temp\plink.txt'
+    os.system(command)
+    f = open("static\\temp\plink.txt", "r")
+    lines =f.read()
+    return lines
+
+def file_check_in_target(user,ip,file = None): #return type : bool
     check_value = False
-    logging.info(command)
+    command = f'ls {file}'
+    line = send_by_plink(user,ip,command)
+    if file in line:
+        check_value = True
+    return check_value
+
+def file_check_in_pc(file = None,path='./static/temp'): #return type : bool
+    check_value = False
+    loca_file_path = os.path.join(path,os.path.basename(file))
+    if os.path.exists(loca_file_path) is True:
+        check_value =  True
+        #logging.info(f'file already exist - {loca_file_path}')
     return check_value
 
 def get_tmp_screenshot(user = 'root',ip=None,file='/tmp/eel-screenshot.png.png',path='./static/temp',time=None):
-    command = 'scp -q "%s@%s:%s" "%s"' %(user,ip,file,path)
+    command = 'static\\tool\putty\scp.exe -q "%s@%s:%s" "%s"' %(user,ip,file,path)
     os.system(command)
     if time is None:
         time = str(datetime.datetime.now())
@@ -63,32 +78,31 @@ def get_tmp_screenshot(user = 'root',ip=None,file='/tmp/eel-screenshot.png.png',
     os.rename(download_path,change_path)
     return 0
 
-def download_file(ssh,user,ip,file,path='./static/temp'):
-    loca_file_path = os.path.join(path,os.path.basename(file))
-    if os.path.exists(loca_file_path) is True:
-        logging.info(f'file already exist - {loca_file_path}')
-        return True
-    #check file exist.
-    check_value = file_check_via_ssh(ssh,file)
-    #logging.info(check_value)
-    if check_value is True:
-        command = 'scp -q "%s@%s:%s" "%s"' %(user,ip,file,path)
+def download_file(user,ip,file,path='./static/temp'): #return type : bool
+    file_in_pc = file_check_in_pc(file,path)
+    file_in_target = file_check_in_target(user,ip,file)
+    if file_in_pc is True or file_in_target is False:
+        logging.info(f'file_in_pc: {file_in_pc}, file_in_target: {file_in_target}')
+        return False
+    else:
+        command = f'static\\tool\putty\pscp.exe -q "{user}@{ip}:{file}" "{path}"' 
+        logging.info(command)
         os.system(command)
         download_path = os.path.join(path,os.path.basename(file))
         return download_path
-    else:
-        logging.info('no file in target - %s/%s' %(path,os.path.basename(file)))
-        return False
+
 
 def uploadfile(user,ip,path_pc,path_target):
-    command = f'scp -q {path_pc} {user}@{ip}:{path_target}'
+    command = f'scp -q "{path_pc}" "{user}@{ip}:{path_target}"'
+    command = f'scp "{path_pc}" "{user}@{ip}:{path_target}"'
     logging.info(command)
-    logging_message.input_message(path = message_path, message = f'upload {path_pc} into {user}@{ip}:{path_target}')
+    logging_message.input_message(path = message_path, message = f'{command}')
     os.system(command)
     return 0
 
-def ssh_connect(ip,user):
-    logging.debug('ssh connection start')
+def ssh_connect(user,ip):
+    logging.debug('start connect target')
+    logging_message.input_message(path = message_path, message = 'start connect target')
     add_known_hosts(user,ip)
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy)
@@ -115,19 +129,13 @@ def check_ssh_connection(ssh):
     #logging.debug('ssh_status: %s' %str(ssh_status))
     return ssh_status
 
-def send(ssh,command):
-    stdin, stdout, stderr = ssh.exec_command(command)   # ssh 접속한 경로에 디렉토리 및 파일 리스트 확인 명령어 실행
-    lines = stdout.readlines()
-    #for line in lines:
-    #    logging.debug(line)
-    return lines
-
 ## ============================================================
 
 ## ============================================================
 ## ============================================================
 ## those are call functions from UI 
 def change_binary(user,ip,path_pc):
+    add_known_hosts(user,ip)
     #check binary exist
     filelist = os.listdir(path_pc)
     if 'nv_main' not in filelist:
@@ -137,6 +145,13 @@ def change_binary(user,ip,path_pc):
     #how to change binary
     logging_message.input_message(path = message_path, message = f'start change binary')
     commands = mb_data[current_project]['change_binary']
+    #following the step.
+    #make /tmp/navi
+    cmd = f'ssh {user}@{ip} "mkdir /tmp/navi"'
+    logging.info(f'send command {cmd}')
+    os.system(cmd)
+    return 0
+    #copy /tmp/navi
     for commd in commands:
         if "copy new sw" not in commd:
             cmd = f'ssh {user}@{ip} "{commd}"'
@@ -152,14 +167,16 @@ def change_binary(user,ip,path_pc):
     logging_message.input_message(path = message_path, message = f'change binary done.')
     return 0
 
-def make_trigger(ssh):
+def make_trigger(user,ip):
     logging.debug('send user trigger.')
-    stdin, stdout, stderr = ssh.exec_command(mb_data[current_project]['user_trigger'])
-    lines = stdout.readlines()
+    command = mb_data[current_project]['user_trigger']
+    logging.info(command)
+    lines = send_by_plink(user,ip,command)
     now = datetime.datetime.now()
-    for line in lines:    # for문을 통해 명령어 결과값 출력.
-        re = str(line).replace('\n', '')
-        logging_message.input_message(path = message_path, message = re)
+    logging.info(lines)
+    #for line in lines:    # for문을 통해 명령어 결과값 출력.
+    #    re = str(line).replace('\n', '')
+    #    logging_message.input_message(path = message_path, message = re)
     return now, lines
 
 
@@ -167,7 +184,9 @@ def make_trigger(ssh):
 def get_version(ssh):
     logging.info('start get version')
     def get_each_version(command):
-        ver = ''
+        ver = '-'
+        logging.info(command)
+        
         stdin, stdout, stderr = ssh.exec_command(command)
         lines = stdout.readlines()
         for i in lines:
@@ -178,7 +197,7 @@ def get_version(ssh):
     def get_map_version(ssh,user,ip):
         map_path = mb_data[current_project]['dbpath']
         path = './static/temp'
-        downlaod_file_path = download_file(ssh,user,ip,map_path,path)
+        downlaod_file_path = download_file(user,ip,map_path,path)
         if downlaod_file_path == False:
             logging.info('there is no file')
             return '-'
@@ -186,7 +205,7 @@ def get_version(ssh):
             del_file_path = os.path.join(path,os.path.basename(map_path))
             logging.info(del_file_path)
             os.remove(del_file_path)
-            downlaod_file_path = download_file(ssh,user,ip,map_path,path)
+            downlaod_file_path = download_file(user,ip,map_path,path)
         if downlaod_file_path != 0:    
             con = sqlite3.connect(downlaod_file_path)
             cur = con.cursor()
@@ -198,22 +217,28 @@ def get_version(ssh):
             con.close()
             os.remove(downlaod_file_path)
             return map_ver
+    
+    hu_ver = '-'
+    sw_ver = '-'
+    map_ver = '-'
+    ui_ver = '-'
+    map_ver= '-'
     hu_ver = get_each_version(mb_data[current_project]['hu_version'])
     sw_ver = get_each_version(mb_data[current_project]['sw_version'])
     map_ver = get_each_version(mb_data[current_project]['map_version'])
     ui_ver = get_each_version(mb_data[current_project]['ui_version'])
-    map_ver= get_map_version(ssh, user,ip)
-    #logging.debug(hu_ver)
-    #logging.debug(sw_ver)
-    #logging.debug(map_ver)
-    #logging.debug(ui_ver)
+    #map_ver= get_map_version(ssh, user,ip)
+    logging.debug(hu_ver)
+    logging.debug(sw_ver)
+    logging.debug(map_ver)
+    logging.debug(ui_ver)
     return hu_ver, sw_ver, map_ver, ui_ver
 
 def download_trigger(ssh,folder_path='./static/temp/trigger'):
     trigger_path =mb_data[current_project]['path_loca_trigger']
     ip = mb_data['ip']
     logging.info(trigger_path)
-    trigger_lines = send(ssh,'ls %s' %trigger_path)
+    trigger_lines = send_by_ssh(ssh,'ls %s' %trigger_path)
     str_today = datetime.date.today().strftime("%Y%m%d")
     #logging.info(str_today)
     for li in trigger_lines:
@@ -291,15 +316,12 @@ def extract_screenshot_from_trigger(trigger_folder_path='./static/temp/trigger')
     return 0
     
 def get_traffic_sdi_dat(ssh,user,ip,traffic_sdi_dat,path='./static/temp/traffic'):
-    
     if os.path.exists('%s/%s' %(path,os.path.basename(traffic_sdi_dat))) is True:
         os.remove('%s/%s' %(path,os.path.basename(traffic_sdi_dat)))
     download_file(ssh,user,ip,traffic_sdi_dat,path)
     logging_message.input_message(path = message_path, message = 'traffic sdi downloading done!')
     logging_message.input_message(path = message_path, message = 'downloading path - %s' %path)
     return 0
-
-
 
 if __name__ == "__main__":
     logging.info(__name__)

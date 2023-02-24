@@ -16,7 +16,8 @@ revision_list=[
     'Revision list',
     'v0.1 (2022-01-24) : proto type release (beta ver.)',
     'v0.2 (2022-01-27) : merge download trigger and extract sreenshot (beta ver.)\ndisable function button when running.',
-    'v0.3 (2022-02-14) : add change binary and open firewall, port'
+    'v0.3 (2022-02-14) : add change binary and open firewall, port',
+    'v0.4 (2022-02-23) : Change from ssh (built-in) to putty'
     ]
 
 config_path ='static\config\config.json'
@@ -54,11 +55,15 @@ def prod_app():
 
 
 def debug_app():
+    user ='root'
+    ip = '10.120.1.91'
+    path_pc = r'G:\SW\E048.1_230711' 
+    a = mb_tools.download_file(user,ip,'/var/system-version.txt')
     return 0
     
 if __name__ =='__main__':
     try:
-        prod_app()
+        debug_app()
     except Exception as E:
         logging.info(E)
         logging_message.input_message(path = message_path,message = str(E))
