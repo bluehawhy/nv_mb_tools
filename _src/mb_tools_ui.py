@@ -61,6 +61,8 @@ class FormWidget(QWidget):
         self.logging_temp = None
         self.set_dir = config_data['last_file_path']
         self.statusbar = statusbar
+        self.version_txt = ''
+        self.new_version_txt = ''
         self.radio_button_group= []
         self.function_button_group= []
         self.function_group= []
@@ -174,7 +176,6 @@ class FormWidget(QWidget):
         self.function_group.append(self.button_change_binary)
         self.function_group.append(self.qline_function)
 
-        
         for self.button_function in self.function_group:
             self.button_function.setEnabled(False)
         self.button_extract_screenshot_from_HU.setEnabled(True)
@@ -266,6 +267,7 @@ class FormWidget(QWidget):
         for self.button_function in self.function_group:
             self.button_function.setEnabled(value)
         return 0
+
     #set tread to change status bar and log browser
     def thread_for_one_sec(self):
         def show_time_statusbar():
@@ -284,8 +286,23 @@ class FormWidget(QWidget):
                 self.logging_temp = self.logging
                 self.qtext_log_browser.moveCursor(QTextCursor.End)
             return 0
+        
+        def show_current_verssion():
+            if self.statusbar_status == "disconnected":
+                pass
+            if self.statusbar_status == "connected":
+                if self.new_version_txt == self.version_txt: #pass if new and current are same else update
+                    #logging.info('pass due to same version')
+                    pass
+                else:
+                    logging.info('show_current_verssion() - new version detected so update version box')
+                    self.version_txt = self.new_version_txt #sync version and new one
+                    self.qtext_ver_browser.setText(self.version_txt)
+            return 0
+
         show_time_statusbar()
         show_logging()
+        show_current_verssion()
         return 0
     
     def thread_for_sixteen_sec(self):
@@ -303,21 +320,23 @@ class FormWidget(QWidget):
                 self.ssh = 0
                 self.set_function_button(False)
                 logging_message.input_message(path = message_path, message = '%s@%s has been disconnected.' %('root',self.ip))
+            return 0
         
-
         def check_current_path():
             self.set_dir = config_data['last_file_path']
             self.qline_path.setText(self.set_dir)
-        
-        def check_version():
+            return 0
+
+        def check_current_version():
             if self.statusbar_status == "disconnected":
                 pass
             if self.statusbar_status == "connected":
-                self.call_version_into_textbox()
+                self.new_version_txt = self.call_version_into_textbox()
+            return 0
         
         check_status_ssh()
         check_current_path()
-        check_version()
+        check_current_version()
         return 0
 
     
@@ -337,27 +356,32 @@ class FormWidget(QWidget):
     #ssh connection start
     def on_start_connect_ssh(self):
         def connect_ssh():
+            self.button_ssh_connect.setEnabled(False)
             logging.info('statusbar_status: %s' %self.statusbar_status)
             self.ip = self.line_ip.text()
             logging.info('ip is %s' %self.ip)
+            mb_tools.add_known_hosts(user,self.ip)
             self.ssh = mb_tools.ssh_connect(self.ip,'root')
             if self.ssh != 0:
                 mb_data['ip'] = self.ip
                 config.save_config(mb_data,mb_path)
                 self.line_ip.setReadOnly(True)
                 self.button_ssh_connect.setEnabled(False)
-                self.call_version_into_textbox()
                 for self.radiobutton in self.radio_button_group:
                     self.radiobutton.setEnabled(False)
                 self.set_function_button(True)
                 self.statusbar_status = 'connected'
                 self.button_ssh_connect.setText('connected')
+                self.new_version_txt = self.call_version_into_textbox()
                 return self.ssh
             else:
                 #if ssh connected fail
+                self.button_ssh_connect.setEnabled(True)
                 return 0
+
         if self.statusbar_status == 'disconnected':
-            self.ssh = connect_ssh()
+            thread_import = threading.Thread(target=connect_ssh)
+            thread_import.start()
             return 0
     
     #==================================================================
@@ -369,8 +393,7 @@ class FormWidget(QWidget):
         temp_version = temp_version + 'Navi version: %s' %sw_ver +'\n'
         temp_version = temp_version + 'Map version: %s' %map_ver +'\n'
         temp_version = temp_version + 'UI version: %s' %ui_ver
-        self.qtext_ver_browser.setText(temp_version)
-        return 0
+        return temp_version
 
     def on_start_function_number(self):
         self.function_number = self.qline_function.text()
@@ -415,7 +438,7 @@ class FormWidget(QWidget):
                 self.set_function_button(False)
                 mb_tools.change_binary(user,ip,self.folder_name)
                 self.set_function_button(True)
-                
+                self.new_version_txt = self.call_version_into_textbox()
                 return 0
             else:
                 return 0
