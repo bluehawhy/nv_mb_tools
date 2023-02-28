@@ -20,8 +20,8 @@ config_data =config.load_config(config_path)
 message_path = config_data['message_path']
 qss_path  = config_data['qss_path']
 
-logging.debug('qss_path is %s' %qss_path)
-logging.debug('config_path is %s' %config_path)
+#logging.debug('qss_path is %s' %qss_path)
+#logging.debug('config_path is %s' %config_path)
 
 
 mb_path = 'static\config\mb_command.json'
@@ -267,6 +267,12 @@ class FormWidget(QWidget):
         for self.button_function in self.function_group:
             self.button_function.setEnabled(value)
         return 0
+    
+    def set_function_button_disconnected(self,value=True):
+        self.button_extract_screenshot_from_HU.setEnabled(value)
+        self.button_ssh_connect.setEnabled(value)
+        return 0
+
 
     #set tread to change status bar and log browser
     def thread_for_one_sec(self):
@@ -360,7 +366,7 @@ class FormWidget(QWidget):
             logging.info('statusbar_status: %s' %self.statusbar_status)
             self.ip = self.line_ip.text()
             logging.info('ip is %s' %self.ip)
-            mb_tools.add_known_hosts(user,self.ip)
+            mb_tools.autostoring_cache_plink(user,self.ip)
             self.ssh = mb_tools.ssh_connect(self.ip,'root')
             if self.ssh != 0:
                 mb_data['ip'] = self.ip
@@ -387,7 +393,7 @@ class FormWidget(QWidget):
     #==================================================================
     #function start
     def call_version_into_textbox(self):
-        hu_ver, sw_ver, map_ver, ui_ver = mb_tools.get_version(self.ssh)
+        hu_ver, sw_ver, map_ver, ui_ver = mb_tools.get_version(user,ip)
         temp_version = ''
         temp_version = temp_version + 'HU version: %s' %hu_ver +'\n'
         temp_version = temp_version + 'Navi version: %s' %sw_ver +'\n'
@@ -464,8 +470,7 @@ class FormWidget(QWidget):
         #logging.info(cmd)
         mb_tools.send(self.ssh,cmd)
         return 0
-
-    
+ 
     def on_trigger(self):
         logging_message.input_message(path = message_path, message = f'start make trigger.')
         def start():
@@ -485,13 +490,11 @@ class FormWidget(QWidget):
             pass
         if self.statusbar_status == "connected":
             self.folder_path = self.open_folder_name_dialog()
-            
             def start():
-                traffic_sdi_dat = mb_data[self.current_project]['traffic_sdi_dat']
                 if self.folder_path =='':
                     pass
                 else:
-                    mb_tools.get_traffic_sdi_dat(self.ssh,user,ip,traffic_sdi_dat,path=self.folder_path)
+                    mb_tools.get_traffic_sdi_dat(self.ssh,user,ip,path=self.folder_path)
                 return 0
             thread_import = threading.Thread(target=start)
             thread_import.start()
@@ -508,7 +511,7 @@ class FormWidget(QWidget):
                 if self.folder_path =='':
                     pass
                 else:
-                    mb_tools.download_trigger(self.ssh,self.folder_path)
+                    mb_tools.get_trigger(user,ip,folder_path=self.folder_path)
                     mb_tools.extract_screenshot_from_trigger(self.folder_path)
                 self.set_function_button(True)
                 return 0
@@ -529,7 +532,10 @@ class FormWidget(QWidget):
             else:
                 self.set_function_button(False)
                 mb_tools.extract_screenshot_from_trigger(self.folder_path)
-                self.set_function_button(True)
+                if self.statusbar_status == "disconnected":
+                    self.set_function_button_disconnected()
+                if self.statusbar_status == "connected":
+                    self.set_function_button(True)
             return 0
         thread_import = threading.Thread(target=start)
         thread_import.start()
