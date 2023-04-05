@@ -22,11 +22,7 @@ message_path = config_data['message_path']
 test_cycle_url = config_data['test_cycle_url']
 
 mb_path = 'static\config\mb_command.json'
-mb_data =config.load_config(mb_path)
 
-user = mb_data['user']
-ip = mb_data['ip']
-current_project = mb_data['current_project']
 
 ## ============================================================
 ## thosre are basic functions - refer to other functions
@@ -80,7 +76,7 @@ def download_file(user,ip,file,path='./static/temp'): #return type : bool, str
     download_result = False
     if file_in_pc is True or file_in_target is False:
         logging.info(f'file_in_pc: {file_in_pc}') if file_in_pc == True else None
-        logging.info(f'file_in_target: {file_in_target}') if file_in_target == False else None
+        logging.info(f'file_in_target: {file_in_target} - {file}') if file_in_target == False else None
         return download_result , download_path
     else:
         command = f'static\\tool\putty\pscp.exe "{user}@{ip}:{file}" "{path}"' 
@@ -100,17 +96,18 @@ def uploadfile(user,ip,file_in_pc,path_target): #return type : 0
         os.system(command)
     return 0
 
-def ssh_connect(user,ip): #return type : 0
+def ssh_connect(user,ip): #return type : ssh or 0
     logging.debug('start connect target')
     logging_message.input_message(path = message_path, message = 'start connect target')
+    add_known_hosts(user,ip)
     autostoring_cache_plink(user,ip)
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+    ssh_client = paramiko.SSHClient()
+    ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+    ssh_client.connect(ip, username=user, password="", timeout=1)    # 대상IP, User명, 패스워드 입력
     try:
-        ssh.connect(ip, username=user, password="", timeout=3)    # 대상IP, User명, 패스워드 입력
         logging.debug('ssh connected. %s@%s' %(user,ip))    # ssh 정상 접속 후 메시지 출력
         logging_message.input_message(path = message_path, message = 'connected - %s@%s' %(user,ip))
-        return ssh
+        return ssh_client
     except Exception as err:
         logging.debug(err)    # ssh 접속 실패 시 ssh 관련 에러 메시지 출력
         logging_message.input_message(path = message_path, message = 'no response from server or ip')
@@ -132,28 +129,31 @@ def check_ssh_connection(ssh): #return type : bool
 ## ============================================================
 ## those are functions during implementation 
 
-def make_trigger(user,ip): #return type : time, str
+def make_trigger(user,ip): #return type : str, str
     logging.debug('send user trigger.')
+    mb_data =config.load_config(mb_path)
+    current_project = mb_data['current_project']
     command = mb_data[current_project]['user_trigger']
     logging.info(command)
     lines = send_by_plink(user,ip,command)
-    now = datetime.datetime.now()
-    logging.info(lines)
+    now = str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
     #for line in lines:    # for문을 통해 명령어 결과값 출력.
     #    re = str(line).replace('\n', '')
     #    logging_message.input_message(path = message_path, message = re)
     return now, lines
     
 
-def get_tmp_screenshot(user = 'root',ip=None,file='/tmp/eel-screenshot.png.png',path='./static/temp',trigger_time=None):  #return type : 0
+def get_tmp_screenshot(user = 'root',ip=None,file=None,path='./static/temp',trigger_time=None):  #return type : 0
+    mb_data =config.load_config(mb_path)
+    current_project = mb_data['current_project']
+    if file == None:
+        file = mb_data[current_project]['temp_png_path']
     download_result, download_path = download_file(user,ip,file,path)
     if download_result is not True:
         return 0
     if trigger_time is None:
-        now_time = str(datetime.datetime.now())
-        trigger_time = str(now_time).replace(' ','_').replace(':','_')
+        trigger_time = str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
     else:
-        trigger_time = str(trigger_time).replace(' ','_').replace(':','_')
         download_path = f'{path}/{os.path.basename(file)}'
         change_path = f'{path}/screenshot_{trigger_time}_.png'
         #os.system(f'rename "{download_path}" "{change_path}"')
@@ -167,6 +167,8 @@ def get_tmp_screenshot(user = 'root',ip=None,file='/tmp/eel-screenshot.png.png',
 
 #============================== version ============================================
 def get_map_version(user,ip,path = './static/temp'): #return type : str
+    mb_data =config.load_config(mb_path)
+    current_project = mb_data['current_project']
     map_path = mb_data[current_project]['dbpath']
     map_ver = '-'
     download_result, download_path = download_file(user,ip,map_path,path)
@@ -186,17 +188,21 @@ def get_map_version(user,ip,path = './static/temp'): #return type : str
         return map_ver
 
 def get_version(user,ip): #return type : map(str)
-    logging.info('start get version')   
+    logging.info('start get version')
+    mb_data =config.load_config(mb_path)
+    current_project = mb_data['current_project']
     hu_ver = send_by_plink(user,ip,mb_data[current_project]['hu_version']).replace('\n', '').replace('\r', '')
     sw_ver = send_by_plink(user,ip,mb_data[current_project]['sw_version']).replace('\n', '').replace('\r', '')
     map_ver = send_by_plink(user,ip,mb_data[current_project]['map_version']).replace('\n', '').replace('\r', '')
     ui_ver = send_by_plink(user,ip,mb_data[current_project]['ui_version']).replace('\n', '').replace('\r', '').replace('carbon-ui', '').replace('"', '').replace(':', '')
     map_ver= get_map_version(user,ip)
-    logging.debug(f'hu_ver: {hu_ver}, sw_ver: {sw_ver} map_ver: {map_ver} ui_ver: {ui_ver}')
+    #logging.debug(f'hu_ver: {hu_ver}, sw_ver: {sw_ver} map_ver: {map_ver} ui_ver: {ui_ver}')
     return hu_ver, sw_ver, map_ver, ui_ver
 
 #============================== traffic ============================================
 def get_traffic_sdi_dat(user,ip,path='./static/temp/traffic'): #return type : int
+    mb_data =config.load_config(mb_path)
+    current_project = mb_data['current_project']
     traffic_sdi_dat = mb_data[current_project]['traffic_sdi_dat']
     sdi_path = os.path.join(path,os.path.basename(traffic_sdi_dat))
     os.remove(sdi_path) if file_check_in_pc(sdi_path,path) is True else 0
@@ -208,6 +214,8 @@ def get_traffic_sdi_dat(user,ip,path='./static/temp/traffic'): #return type : in
 #============================== binary ============================================
 def change_binary(user,ip,path_pc):
     autostoring_cache_plink(user,ip)
+    mb_data =config.load_config(mb_path)
+    current_project = mb_data['current_project']
     #check binary exist
     filelist = os.listdir(path_pc)
     if 'nv_main' not in filelist:
@@ -235,6 +243,8 @@ def change_binary(user,ip,path_pc):
 #============================== trigger ============================================
 def get_trigger(user,ip,folder_path='./static/temp/trigger'): #return type : int
     logging_message.input_message(path = message_path, message = 'trigger downloading start!')
+    mb_data =config.load_config(mb_path)
+    current_project = mb_data['current_project']
     trigger_path =mb_data[current_project]['path_loca_trigger']
     trigger_lines = send_by_plink(user,ip, f'ls {trigger_path}')
     str_today = datetime.date.today().strftime("%Y%m%d")
@@ -315,7 +325,6 @@ def extract_screenshot_from_trigger(trigger_folder_path='./static/temp/trigger')
     logging_message.input_message(path = message_path, message = 'extract screenshot from HU done!')
     logging_message.input_message(path = message_path, message = 'downloading path - %s' %trigger_folder_path)
     return 0
-
 
 
 if __name__ == "__main__":
