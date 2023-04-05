@@ -1,8 +1,8 @@
 #!/usr/bin/python
-from multiprocessing.dummy import current_process
 import os
 import threading
 import time
+import traceback
 from datetime import date
 
 from PyQt5.QtWidgets import *
@@ -16,30 +16,17 @@ logging = logger.logger
 logging_file_name = logger.log_full_name
 
 config_path ='static\config\config.json'
-config_data =config.load_config(config_path)
-message_path = config_data['message_path']
-qss_path  = config_data['qss_path']
-
-#logging.debug('qss_path is %s' %qss_path)
-#logging.debug('config_path is %s' %config_path)
-
-
 mb_path = 'static\config\mb_command.json'
-mb_data =config.load_config(mb_path)
-
-ip = mb_data['ip']
-user = mb_data['user']
-project_list = ['None']
-if len(mb_data['project_list']) != 0:
-            project_list = mb_data['project_list']
-
 
 class MyMainWindow(QMainWindow):
     def __init__(self,title):
         super().__init__()
         self.title = title
         self.today = date.today().strftime('%Y%m%d')
-        self.setStyleSheet(open(qss_path, "r").read())
+        self.config_data =config.load_config(config_path)
+        self.message_path = self.config_data['message_path']
+        self.qss_path  = self.config_data['qss_path']
+        self.setStyleSheet(open(self.qss_path, "r").read())
         self.initUI()
         self.show()
 
@@ -57,12 +44,22 @@ class FormWidget(QWidget):
         super(FormWidget, self).__init__(parent)
         self.statusbar_status = 'disconnected'
         self.ssh = 0
-        self.current_project = mb_data['current_project']
+        self.config_data =config.load_config(config_path)
+        self.message_path = self.config_data['message_path']
+        self.qss_path  = self.config_data['qss_path']
+        self.mb_data =config.load_config(mb_path)
+        self.ip = self.mb_data['ip']
+        self.user = self.mb_data['user']
+        self.project_list = ['None']
+        if len(self.mb_data['project_list']) != 0:
+            self.project_list = self.mb_data['project_list']
+        self.current_project = self.mb_data['current_project']
         self.logging_temp = None
-        self.set_dir = config_data['last_file_path']
+        self.set_dir = self.config_data['last_file_path']
         self.statusbar = statusbar
         self.version_txt = ''
         self.new_version_txt = ''
+        self.logging = ''
         self.radio_button_group= []
         self.function_button_group= []
         self.function_group= []
@@ -72,33 +69,36 @@ class FormWidget(QWidget):
         self.timer_onescond.timeout.connect(self.thread_for_one_sec)
         self.timer_onescond.start(1000)
         self.timer_tenscond = QTimer(self)
-        self.timer_tenscond.timeout.connect(self.thread_for_sixteen_sec)
-        self.timer_tenscond.start(60000)
+        self.timer_tenscond.timeout.connect(self.thread_for_ten_sec)
+        self.timer_tenscond.start(10000)
+        self.timer_hunscond = QTimer(self)
+        self.timer_hunscond.timeout.connect(self.thread_for_hun_sec)
+        self.timer_hunscond.start(100000)
         
 
     def initUI(self):
-        self.setStyleSheet(open(qss_path, "r").read())
+        self.setStyleSheet(open(self.qss_path, "r").read())
         # make layout
         self.layout_main = QHBoxLayout(self)
         self.layout_fun = QVBoxLayout(self)
 
         #project layout
         self.layout_project = QHBoxLayout(self)    
-        logging.info('project list - %s' %str(project_list))
+        logging.info('project list - %s' %str(self.project_list))
         self.layout_project.addWidget(QLabel('project: '))
         
-        for project in project_list:
-            self.radiobutton = QRadioButton(project)
+        for self.project in self.project_list:
+            self.radiobutton = QRadioButton(self.project)
             self.radio_button_group.append(self.radiobutton)
-            self.radiobutton.project = project
-            if project == self.current_project:
+            self.radiobutton.project = self.project
+            if self.project == self.current_project:
                 self.radiobutton.setChecked(True)
             self.radiobutton.toggled.connect(self.on_project_clicked)
             self.layout_project.addWidget(self.radiobutton)
         
         #ssh connected layout
         self.layout_ssh_connect = QGridLayout(self)
-        self.ip = mb_data['ip']
+        self.ip = self.mb_data['ip']
         self.line_ip = QLineEdit(self.ip)
         self.button_ssh_connect = QPushButton('connect')
         self.layout_ssh_connect.addWidget(QLabel('ip: ') , 1, 0)
@@ -220,7 +220,7 @@ class FormWidget(QWidget):
 
     # add event list
     def open_fileName_dialog(self):
-        self.set_dir = config_data['last_file_path']
+        self.set_dir = self.config_data['last_file_path']
         logging.info(self.set_dir)
         if self.set_dir == '':
             self.set_dir = os.path.join(os.path.expanduser('~'),'Desktop')
@@ -234,12 +234,12 @@ class FormWidget(QWidget):
             pass
         else:
             folder_path = os.path.dirname(file_name)
-            config_data['last_file_path']=folder_path
-            config.save_config(config_data,config_path)
+            self.config_data['last_file_path']=folder_path
+            self.config_data = config.save_config(self.config_data,config_path)
         return file_name
     
     def open_folder_name_dialog(self):
-        self.set_dir = config_data['last_file_path']
+        self.set_dir = self.config_data['last_file_path']
         if self.set_dir == '':
             temp_folder = os.path.join(os.path.expanduser('~'),'Desktop')
         else:
@@ -251,8 +251,8 @@ class FormWidget(QWidget):
         if temp_folder == '':
             pass
         else:
-            config_data['last_file_path']=temp_folder
-            config.save_config(config_data,config_path)
+            self.config_data['last_file_path']=temp_folder
+            self.config_data = config.save_config(self.config_data,config_path)
         return temp_folder
 
     def open_folder_name_dialog_no_save(self):
@@ -275,15 +275,15 @@ class FormWidget(QWidget):
 
 
     #set tread to change status bar and log browser
-    def thread_for_one_sec(self):
-        def show_time_statusbar():
+    #============== thread function list ===========================
+    def show_time_statusbar(self):
             self.statusbar_time = QTime.currentTime().toString("hh:mm:ss")
             self.statusbar_message = self.statusbar_time + '\t-\t' + self.statusbar_status  
             self.statusbar.showMessage(str(self.statusbar_message))
             return 0
-
-        def show_logging():
-            with open(message_path, 'r') as myfile:
+    
+    def show_logging(self):
+            with open(self.message_path, 'r') as myfile:
                 self.logging = myfile.read()
             if self.logging_temp == self.logging:
                 pass
@@ -292,59 +292,64 @@ class FormWidget(QWidget):
                 self.logging_temp = self.logging
                 self.qtext_log_browser.moveCursor(QTextCursor.End)
             return 0
-        
-        def show_current_verssion():
-            if self.statusbar_status == "disconnected":
+    def show_current_verssion(self):
+        if self.statusbar_status == "disconnected":
+            pass
+        if self.statusbar_status == "connected":
+            if self.new_version_txt == self.version_txt: #pass if new and current are same else update
+                #logging.info('pass due to same version')
                 pass
-            if self.statusbar_status == "connected":
-                if self.new_version_txt == self.version_txt: #pass if new and current are same else update
-                    #logging.info('pass due to same version')
-                    pass
-                else:
-                    logging.info('show_current_verssion() - new version detected so update version box')
-                    self.version_txt = self.new_version_txt #sync version and new one
-                    self.qtext_ver_browser.setText(self.version_txt)
-            return 0
+            else:
+                logging.info('show_current_verssion() - new version detected so update version box')
+                self.version_txt = self.new_version_txt #sync version and new one
+                self.qtext_ver_browser.setText(self.version_txt)
+        return 0
 
-        show_time_statusbar()
-        show_logging()
-        show_current_verssion()
+    def check_status_ssh(self):
+        self.ssh_status = mb_tools.check_ssh_connection(self.ssh)
+        #logging.info(self.ssh_status)
+        logging.debug('statusbar %s - ssh status %s' %(str(self.statusbar_status),str(self.ssh_status)))
+        if self.statusbar_status == "disconnected":
+            pass
+        if self.statusbar_status == "connected" and self.ssh_status is False:
+            logging.debug('ssh disconnected')
+            self.statusbar_status = "disconnected"
+            self.line_ip.setReadOnly(False)
+            self.button_ssh_connect.setEnabled(True)
+            self.button_ssh_connect.setText('connect')
+            self.ssh = 0
+            self.set_function_button(False)
+            logging_message.input_message(path = self.message_path, message = '%s@%s has been disconnected.' %('root',self.ip))
         return 0
     
-    def thread_for_sixteen_sec(self):
-        def check_status_ssh():
-            self.ssh_status = mb_tools.check_ssh_connection(self.ssh)
-            #logging.debug('statusbar %s - ssh status %s' %(str(self.statusbar_status),str(self.ssh_status)))
-            if self.statusbar_status == "disconnected":
-                pass
-            if self.statusbar_status == "connected" and self.ssh_status is False:
-                logging.debug('ssh disconnected')
-                self.statusbar_status = "disconnected"
-                self.line_ip.setReadOnly(False)
-                self.button_ssh_connect.setEnabled(True)
-                self.button_ssh_connect.setText('connect')
-                self.ssh = 0
-                self.set_function_button(False)
-                logging_message.input_message(path = message_path, message = '%s@%s has been disconnected.' %('root',self.ip))
-            return 0
-        
-        def check_current_path():
-            self.set_dir = config_data['last_file_path']
-            self.qline_path.setText(self.set_dir)
-            return 0
-
-        def check_current_version():
-            if self.statusbar_status == "disconnected":
-                pass
-            if self.statusbar_status == "connected":
-                self.new_version_txt = self.call_version_into_textbox()
-            return 0
-        
-        check_status_ssh()
-        check_current_path()
-        check_current_version()
+    def check_current_path(self):
+        self.set_dir = self.config_data['last_file_path']
+        self.qline_path.setText(self.set_dir)
         return 0
 
+    def get_current_version(self):
+        if self.statusbar_status == "disconnected":
+            pass
+        if self.statusbar_status == "connected":
+            self.new_version_txt = self.call_version_into_textbox()
+        return 0
+
+
+    #============== call function by time thread ===========================
+    def thread_for_one_sec(self):
+        self.show_time_statusbar()
+        self.show_logging()
+        return 0
+    
+    def thread_for_ten_sec(self):
+        self.check_status_ssh()
+        self.show_current_verssion()
+        return 0
+
+
+    def thread_for_hun_sec(self):
+        self.get_current_version()
+        return 0
     
     @pyqtSlot()
     #change project
@@ -353,10 +358,11 @@ class FormWidget(QWidget):
         if radioButton.isChecked():
             logging.debug("project is %s" % (radioButton.project))
             self.current_project = radioButton.project
-            logging_message.input_message(path = message_path, message = '%s is selected' %(self.current_project))
-            mb_data['current_project']=self.current_project
+            logging_message.input_message(path = self.message_path, message = '%s is selected' %(self.current_project))
+            self.mb_data['current_project']=self.current_project
             #logging.debug(mb_data)
-            config.save_config(mb_data,mb_path)
+            self.mb_data = config.save_config(self.mb_data,mb_path)
+            
         return 0
 
     #ssh connection start
@@ -366,11 +372,10 @@ class FormWidget(QWidget):
             logging.info('statusbar_status: %s' %self.statusbar_status)
             self.ip = self.line_ip.text()
             logging.info('ip is %s' %self.ip)
-            mb_tools.autostoring_cache_plink(user,self.ip)
-            self.ssh = mb_tools.ssh_connect(self.ip,'root')
+            self.ssh = mb_tools.ssh_connect(self.user,self.ip)
             if self.ssh != 0:
-                mb_data['ip'] = self.ip
-                config.save_config(mb_data,mb_path)
+                self.mb_data['ip'] = self.ip
+                self.mb_data = config.save_config(self.mb_data,mb_path)
                 self.line_ip.setReadOnly(True)
                 self.button_ssh_connect.setEnabled(False)
                 for self.radiobutton in self.radio_button_group:
@@ -393,7 +398,13 @@ class FormWidget(QWidget):
     #==================================================================
     #function start
     def call_version_into_textbox(self):
-        hu_ver, sw_ver, map_ver, ui_ver = mb_tools.get_version(user,ip)
+        try:
+            hu_ver, sw_ver, map_ver, ui_ver = mb_tools.get_version(self.user,self.ip)
+        except Exception as E:
+            logging.critical(traceback.format_exc())
+            logging_message.input_message(path = self.message_path, message = f'there is error on_change_binary')
+            logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')
+            hu_ver, sw_ver, map_ver, ui_ver = None     
         temp_version = ''
         temp_version = temp_version + 'HU version: %s' %hu_ver +'\n'
         temp_version = temp_version + 'Navi version: %s' %sw_ver +'\n'
@@ -403,22 +414,22 @@ class FormWidget(QWidget):
 
     def on_start_function_number(self):
         self.function_number = self.qline_function.text()
-        logging_message.input_message(path = message_path, message = f'you entered {self.function_number}')
+        logging_message.input_message(path = self.message_path, message = f'you entered {self.function_number}')
         if self.statusbar_status == "disconnected":
              self.qline_function.setText('')
              return 0
         if not self.function_number.isdigit():
-            logging_message.input_message(path = message_path, message = f'please enter number.')
+            logging_message.input_message(path = self.message_path, message = f'please enter number.')
             self.qline_function.setText('')
             return 0
         self.function_number = int(self.qline_function.text())
         if self.function_number == 99:
-            logging_message.input_message(path = message_path, message = f'hidden one. get HU trigger from HU')
+            logging_message.input_message(path = self.message_path, message = f'hidden one. get HU trigger from HU')
             self.on_get_user_trigger()
             self.qline_function.setText('')
             return 0
         if self.function_number > 8:
-            logging_message.input_message(path = message_path, message = f'please enter number under 8.')
+            logging_message.input_message(path = self.message_path, message = f'please enter number under 8.')
             self.qline_function.setText('')
             return 0
         else:
@@ -432,17 +443,24 @@ class FormWidget(QWidget):
             None if self.function_number == 8 else None
             self.qline_function.setText('')
         return 0
+    
     def on_open_folder(self):
+        logging_message.input_message(path = self.message_path, message = f'open folder - {self.set_dir}')
         os.startfile(self.set_dir)
         return 0
     
     def on_change_binary(self):
         self.folder_name = self.open_folder_name_dialog_no_save()
-        logging_message.input_message(path = message_path, message = f'folder path - {self.folder_name}')
+        logging_message.input_message(path = self.message_path, message = f'folder path - {self.folder_name}')
         def start():
             if self.folder_name != '':
                 self.set_function_button(False)
-                mb_tools.change_binary(user,ip,self.folder_name)
+                try:
+                    mb_tools.change_binary(self.user,self.ip,self.folder_name)
+                except Exception as E:
+                    logging.critical(traceback.format_exc())
+                    logging_message.input_message(path = self.message_path, message = f'there is error on_change_binary')
+                    logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')
                 self.set_function_button(True)
                 self.new_version_txt = self.call_version_into_textbox()
                 return 0
@@ -454,32 +472,45 @@ class FormWidget(QWidget):
         
     def on_change_path(self):
         self.check_folder_name = self.qline_path.text()
+        #logging.info(self.check_folder_name)
+        #logging.info(os.path.isdir(self.check_folder_name))
         if os.path.isdir(self.check_folder_name) == True:
-            config_data['last_file_path']=self.check_folder_name
-            config.save_config(config_data,config_path)
-            logging_message.input_message(path = message_path, message = f'change path - {self.check_folder_name}')
+            self.config_data['last_file_path']=self.check_folder_name
+            self.config_data = config.save_config(self.config_data,config_path)
+            self.set_dir = self.check_folder_name
+            logging_message.input_message(path = self.message_path, message = f'change path - {self.check_folder_name}')
         else:
             self.qline_path.setText(self.set_dir)
-            logging_message.input_message(path = message_path, message = f'path is not exist - {self.check_folder_name}')
+            logging_message.input_message(path = self.message_path, message = f'path is not exist - {self.check_folder_name}')
         return 0
     
     def on_open_port(self):
         logging.info('start open port or firewall disable')
-        logging_message.input_message(path = message_path, message = f'start open port or firewall disable')
-        cmd = mb_data[self.current_project]['open_port']
+        logging_message.input_message(path = self.message_path, message = f'start open port or firewall disable')
+        cmd = self.mb_data[self.current_project]['open_port']
         #logging.info(cmd)
-        mb_tools.send(self.ssh,cmd)
+        try:
+            mb_tools.send_by_plink(self.user,self.ip,cmd)
+        except Exception as E:
+            logging.critical(traceback.format_exc())
+            logging_message.input_message(path = self.message_path, message = f'there is error on_open_port')
+            logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')
         return 0
  
     def on_trigger(self):
-        logging_message.input_message(path = message_path, message = f'start make trigger.')
+        logging_message.input_message(path = self.message_path, message = f'start make trigger.')
         def start():
             if self.statusbar_status == "disconnected":
                 pass
             if self.statusbar_status == "connected":
-                now, lines = mb_tools.make_trigger(self.ssh)
-                time.sleep(20)
-                mb_tools.get_tmp_screenshot(ip=self.ip,path=self.set_dir,time=now)
+                try:
+                    now, lines = mb_tools.make_trigger(user=self.user,ip=self.ip)
+                    time.sleep(20)
+                    mb_tools.get_tmp_screenshot(user = 'root', ip=self.ip,path=self.set_dir,trigger_time=now)
+                except Exception as E:
+                    logging.critical(traceback.format_exc())
+                    logging_message.input_message(path = self.message_path, message = f'there is error on_trigger')
+                    logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')
                 return 0
         thread_import = threading.Thread(target=start)
         thread_import.start()
@@ -494,7 +525,12 @@ class FormWidget(QWidget):
                 if self.folder_path =='':
                     pass
                 else:
-                    mb_tools.get_traffic_sdi_dat(self.ssh,user,ip,path=self.folder_path)
+                    try:
+                        mb_tools.get_traffic_sdi_dat(self.ssh,self.user,self.ip,path=self.folder_path)
+                    except Exception as E:
+                        logging.critical(traceback.format_exc())
+                        logging_message.input_message(path = self.message_path, message = f'there is error on_trigger')
+                        logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')       
                 return 0
             thread_import = threading.Thread(target=start)
             thread_import.start()
@@ -505,14 +541,18 @@ class FormWidget(QWidget):
             pass
         if self.statusbar_status == "connected":
             self.folder_path = self.open_folder_name_dialog()
-            
             def start():
                 self.set_function_button(False)
                 if self.folder_path =='':
                     pass
                 else:
-                    mb_tools.get_trigger(user,ip,folder_path=self.folder_path)
-                    mb_tools.extract_screenshot_from_trigger(self.folder_path)
+                    try:
+                        mb_tools.get_trigger(self.user,self.ip,folder_path=self.folder_path)
+                        mb_tools.extract_screenshot_from_trigger(self.folder_path)
+                    except Exception as E:
+                        logging.critical(traceback.format_exc())
+                        logging_message.input_message(path = self.message_path, message = f'there is error on_get_user_trigger')
+                        logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')
                 self.set_function_button(True)
                 return 0
             
@@ -521,7 +561,7 @@ class FormWidget(QWidget):
         return 0
     
     def on_test(self):
-        logging_message.input_message(path = message_path, message = f'test button')
+        logging_message.input_message(path = self.message_path, message = f'test button')
         return 0
 
     def on_extract_screenshot_from_HU(self):
