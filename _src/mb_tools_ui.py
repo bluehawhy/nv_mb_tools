@@ -55,7 +55,9 @@ class FormWidget(QWidget):
             self.project_list = self.mb_data['project_list']
         self.current_project = self.mb_data['current_project']
         self.logging_temp = None
+        
         self.set_dir = self.config_data['last_file_path']
+        
         self.statusbar = statusbar
         self.version_txt = ''
         self.new_version_txt = ''
@@ -150,11 +152,11 @@ class FormWidget(QWidget):
         self.button_extract_screenshot_from_HU = QPushButton('extract screenshot')
         self.button_test2 = QPushButton('test 2')
         self.button_test4 = QPushButton('test 4')
-        self.button_test8 = QPushButton('test 8')
+        self.button_mount_rw = QPushButton('mount as rw')
         self.button_open_port = QPushButton('open port\n disable firewall')
         self.button_change_binary = QPushButton('change binary')
         self.layout_function_button.addWidget(self.button_user_trigger, 0, 0)
-        self.layout_function_button.addWidget(self.button_test8, 3, 1)
+        self.layout_function_button.addWidget(self.button_mount_rw, 3, 1)
         self.layout_function_button.addWidget(self.button_get_traffic_sdi, 2, 0)
         self.layout_function_button.addWidget(self.button_extract_screenshot_from_HU, 3, 0)
         self.layout_function_button.addWidget(self.button_test2, 0, 1)
@@ -168,7 +170,7 @@ class FormWidget(QWidget):
         #set functional group
         self.function_group.append(self.button_user_trigger)
         self.function_group.append(self.button_get_traffic_sdi)
-        self.function_group.append(self.button_test8)
+        self.function_group.append(self.button_mount_rw)
         self.function_group.append(self.button_extract_screenshot_from_HU)
         self.function_group.append(self.button_test2)
         self.function_group.append(self.button_test4)
@@ -214,7 +216,7 @@ class FormWidget(QWidget):
         self.button_open_port.clicked.connect(self.on_open_port)
         self.button_test2.clicked.connect(self.on_test)
         self.button_test4.clicked.connect(self.on_test)
-        self.button_test8.clicked.connect(self.on_test)
+        self.button_mount_rw.clicked.connect(self.on_mount_rw)
         self.button_open_folder.clicked.connect(self.on_open_folder)
         self.button_change_binary.clicked.connect(self.on_change_binary)
 
@@ -351,7 +353,7 @@ class FormWidget(QWidget):
         self.get_current_version()
         return 0
     
-    @pyqtSlot()
+    @pyqtSlot()    
     #change project
     def on_project_clicked(self):
         radioButton = self.sender()
@@ -445,18 +447,28 @@ class FormWidget(QWidget):
         return 0
     
     def on_open_folder(self):
-        logging_message.input_message(path = self.message_path, message = f'open folder - {self.set_dir}')
-        os.startfile(self.set_dir)
+        #check self.set_dir
+        if os.path.isdir(self.set_dir) is True:
+            logging_message.input_message(path = self.message_path, message = f'open folder - {self.set_dir}')
+            os.startfile(self.set_dir)
+        else:
+            logging_message.input_message(path = self.message_path, message = f'there is no folder - {self.set_dir}')
+            self.set_dir = os.path.join(os.path.expanduser('~'),'Desktop')
+            self.config_data['last_file_path']=self.set_dir
+            self.config_data = config.save_config(self.config_data,config_path)
+            self.set_dir = self.config_data['last_file_path']
+            self.qline_path.setText(self.set_dir)
+            os.startfile(self.set_dir)
         return 0
     
     def on_change_binary(self):
-        self.folder_name = self.open_folder_name_dialog_no_save()
-        logging_message.input_message(path = self.message_path, message = f'folder path - {self.folder_name}')
+        self.binary_folder_name = self.open_folder_name_dialog_no_save()
+        logging_message.input_message(path = self.message_path, message = f'folder path - {self.binary_folder_name}')
         def start():
-            if self.folder_name != '':
+            if self.binary_folder_name != '':
                 self.set_function_button(False)
                 try:
-                    mb_tools.change_binary(self.user,self.ip,self.folder_name)
+                    mb_tools.change_binary(self.user,self.ip,self.binary_folder_name)
                 except Exception as E:
                     logging.critical(traceback.format_exc())
                     logging_message.input_message(path = self.message_path, message = f'there is error on_change_binary')
@@ -477,13 +489,20 @@ class FormWidget(QWidget):
         if os.path.isdir(self.check_folder_name) == True:
             self.config_data['last_file_path']=self.check_folder_name
             self.config_data = config.save_config(self.config_data,config_path)
-            self.set_dir = self.check_folder_name
+            self.set_dir = self.config_data['last_file_path']
             logging_message.input_message(path = self.message_path, message = f'change path - {self.check_folder_name}')
         else:
             self.qline_path.setText(self.set_dir)
             logging_message.input_message(path = self.message_path, message = f'path is not exist - {self.check_folder_name}')
         return 0
-    
+
+    def on_mount_rw(self):
+        logging.info('start mount as rw')
+        logging_message.input_message(path = self.message_path, message = f'start mount as rw')
+        cmd = self.mb_data[self.current_project]['mount_rw']
+        mb_tools.send_by_plink(self.user,self.ip,cmd)
+        return 0
+
     def on_open_port(self):
         logging.info('start open port or firewall disable')
         logging_message.input_message(path = self.message_path, message = f'start open port or firewall disable')
