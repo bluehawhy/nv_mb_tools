@@ -11,14 +11,15 @@ from _src import mb_tools, mb_tools_ui
 logging= logger.logger
 logging_file_name = logger.log_full_name
 
-version = 'MB Tool v0.3'
+version = 'MB Tool v0.6'
 revision_list=[
     'Revision list',
     'v0.1 (2022-01-24) : proto type release (beta ver.)',
     'v0.2 (2022-01-27) : merge download trigger and extract sreenshot (beta ver.)\ndisable function button when running.',
     'v0.3 (2022-02-14) : add change binary and open firewall, port',
     'v0.4 (2022-02-23) : Change from ssh (built-in) to putty',
-    'v0.5 (2022-04-05) : add trace when critical error'
+    'v0.5 (2022-04-05) : add trace when critical error',
+    'v0.6 (2022-06-20) : add function "mount as rw"'
     ]
 
 config_path ='static\config\config.json'
