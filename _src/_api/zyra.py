@@ -35,7 +35,7 @@ headers = {
     'Content-Type': 'application/json',  # ;charset=UTF-8',
     'X-Atlassian-Token': 'no-check'}
 
-def initsession(username, password, jira_url, cert=None):
+def initsession(username, password, jira_url = config_data['jira_url'], cert=None):
     logging.debug("start log in from rest.py")
     session = None
     session_info = None

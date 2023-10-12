@@ -4,7 +4,7 @@ import os, sys
 import datetime
 from PyQt5.QtWidgets import *
 
-from . import  configus, zyra
+from . import configus, zyra
 
 
 config_path ='static\config\config.json'
@@ -108,7 +108,7 @@ class LoginForm(QWidget):
         msg = QMessageBox()
         self.user = self.line_id.text()
         self.password = self.line_password.text()
-        self.session_list = zyra.initsession(self.user, self.password)
+        self.session_list = zyra.initsession(username = self.user, password= self.password)
         self.session = self.session_list[0]
         self.session_info = self.session_list[1]
         #fail to login
