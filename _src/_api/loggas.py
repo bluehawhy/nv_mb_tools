@@ -6,13 +6,32 @@
 import os
 import logging.handlers
 
-from . import filepath
+from . import filas
+
+from pathlib import Path
+from datetime import datetime
 
 __all__ = (
     'util_logger'
 )
 __version__ = '0.1.0'
 
+
+
+
+def remove_message(message_path = None):
+    os.remove(message_path) if Path(message_path).exists() else None
+    return None
+
+def input_message(path = None, message = None, settime=True):
+    now = str(datetime.now())[0:19]
+    f = open(path,'a')
+    if settime == True: 
+        f.write(now+' '+message+'\n')
+    if settime == False:
+        f.write(message+'\n')
+    f.close()
+    return None
 
 def makeLogger(logfile):
     # print('start logger rootpath: '+ rootpath)
@@ -28,7 +47,7 @@ def makeLogger(logfile):
     formatter = logging.Formatter('[%(levelname)s|%(filename)s:%(lineno)s] %(asctime)s > %(message)s')
 
     # set value fileHandler and StreamHandler
-    fileHandler = logging.FileHandler(filename=logfile)
+    fileHandler = logging.FileHandler(filename=logfile,encoding='utf-8')
     streamHandler = logging.StreamHandler()
 
     # set handler and fommater
@@ -42,8 +61,7 @@ def makeLogger(logfile):
     return loggerger
 
 
-log_file_name = '%s_%s.log' % (filepath.executed_file_name, filepath.now_date_time)
+log_file_name = '%s_%s.log' % (filas.executed_file_name, filas.now_date_time)
 log_folder_name = os.path.join('_logs')
 log_full_name = os.path.join(log_folder_name, log_file_name)
-print(log_full_name)
 logger = makeLogger(log_full_name)

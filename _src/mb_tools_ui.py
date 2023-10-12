@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import os
+import os, sys
 import threading
 import time
 import traceback
@@ -9,11 +9,26 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import  Qt, pyqtSlot, QTimer, QTime
 from PyQt5.QtGui import QTextCursor
 
-from _src._api import logger, config, logging_message
+
+
+#add internal libary
 from _src import mb_tools
 
-logging = logger.logger
-logging_file_name = logger.log_full_name
+refer_api = "local"
+#refer_api = "global"
+
+if refer_api == "global":
+    sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))))
+    from _api import loggas, configus
+if refer_api == "local":
+    from _src._api import loggas, configus
+#=====================================================
+
+config_path = os.path.join('static','config','config.json')
+mb_config_path = os.path.join('static','config','mb_command.json')
+
+logging = loggas.logger
+logging_file_name = loggas.log_full_name
 
 config_path ='static\config\config.json'
 mb_path = 'static\config\mb_command.json'
@@ -23,7 +38,7 @@ class MyMainWindow(QMainWindow):
         super().__init__()
         self.title = title
         self.today = date.today().strftime('%Y%m%d')
-        self.config_data =config.load_config(config_path)
+        self.config_data =configus.load_config(config_path)
         self.message_path = self.config_data['message_path']
         self.qss_path  = self.config_data['qss_path']
         self.setStyleSheet(open(self.qss_path, "r").read())
@@ -44,10 +59,10 @@ class FormWidget(QWidget):
         super(FormWidget, self).__init__(parent)
         self.statusbar_status = 'disconnected'
         self.ssh = 0
-        self.config_data =config.load_config(config_path)
+        self.config_data =configus.load_config(config_path)
         self.message_path = self.config_data['message_path']
         self.qss_path  = self.config_data['qss_path']
-        self.mb_data =config.load_config(mb_path)
+        self.mb_data =configus.load_config(mb_path)
         self.ip = self.mb_data['ip']
         self.user = self.mb_data['user']
         self.project_list = ['None']
@@ -151,7 +166,7 @@ class FormWidget(QWidget):
         
         self.button_extract_screenshot_from_HU = QPushButton('extract screenshot')
         self.button_test2 = QPushButton('test 2')
-        self.button_test4 = QPushButton('test 4')
+        self.button_change_default_pos = QPushButton('change default pos')
         self.button_mount_rw = QPushButton('mount as rw')
         self.button_open_port = QPushButton('open port\n disable firewall')
         self.button_change_binary = QPushButton('change binary')
@@ -160,7 +175,7 @@ class FormWidget(QWidget):
         self.layout_function_button.addWidget(self.button_get_traffic_sdi, 2, 0)
         self.layout_function_button.addWidget(self.button_extract_screenshot_from_HU, 3, 0)
         self.layout_function_button.addWidget(self.button_test2, 0, 1)
-        self.layout_function_button.addWidget(self.button_test4, 1, 1)
+        self.layout_function_button.addWidget(self.button_change_default_pos, 1, 1)
         self.layout_function_button.addWidget(self.button_open_port, 2, 1)
         self.layout_function_button.addWidget(self.button_change_binary, 1, 0)
         self.layout_function.addLayout(self.layout_function_line)
@@ -173,7 +188,7 @@ class FormWidget(QWidget):
         self.function_group.append(self.button_mount_rw)
         self.function_group.append(self.button_extract_screenshot_from_HU)
         self.function_group.append(self.button_test2)
-        self.function_group.append(self.button_test4)
+        self.function_group.append(self.button_change_default_pos)
         self.function_group.append(self.button_open_port)
         self.function_group.append(self.button_change_binary)
         self.function_group.append(self.qline_function)
@@ -215,7 +230,7 @@ class FormWidget(QWidget):
         self.button_extract_screenshot_from_HU.clicked.connect(self.on_extract_screenshot_from_HU)
         self.button_open_port.clicked.connect(self.on_open_port)
         self.button_test2.clicked.connect(self.on_test)
-        self.button_test4.clicked.connect(self.on_test)
+        self.button_change_default_pos.clicked.connect(self.on_change_default_pos)
         self.button_mount_rw.clicked.connect(self.on_mount_rw)
         self.button_open_folder.clicked.connect(self.on_open_folder)
         self.button_change_binary.clicked.connect(self.on_change_binary)
@@ -237,7 +252,7 @@ class FormWidget(QWidget):
         else:
             folder_path = os.path.dirname(file_name)
             self.config_data['last_file_path']=folder_path
-            self.config_data = config.save_config(self.config_data,config_path)
+            self.config_data = configus.save_config(self.config_data,config_path)
         return file_name
     
     def open_folder_name_dialog(self):
@@ -254,7 +269,7 @@ class FormWidget(QWidget):
             pass
         else:
             self.config_data['last_file_path']=temp_folder
-            self.config_data = config.save_config(self.config_data,config_path)
+            self.config_data = configus.save_config(self.config_data,config_path)
         return temp_folder
 
     def open_folder_name_dialog_no_save(self):
@@ -321,7 +336,7 @@ class FormWidget(QWidget):
             self.button_ssh_connect.setText('connect')
             self.ssh = 0
             self.set_function_button(False)
-            logging_message.input_message(path = self.message_path, message = '%s@%s has been disconnected.' %('root',self.ip))
+            loggas.input_message(path = self.message_path, message = '%s@%s has been disconnected.' %('root',self.ip))
         return 0
     
     def check_current_path(self):
@@ -360,10 +375,10 @@ class FormWidget(QWidget):
         if radioButton.isChecked():
             logging.debug("project is %s" % (radioButton.project))
             self.current_project = radioButton.project
-            logging_message.input_message(path = self.message_path, message = '%s is selected' %(self.current_project))
+            loggas.input_message(path = self.message_path, message = '%s is selected' %(self.current_project))
             self.mb_data['current_project']=self.current_project
             #logging.debug(mb_data)
-            self.mb_data = config.save_config(self.mb_data,mb_path)
+            self.mb_data = configus.save_config(self.mb_data,mb_path)
             
         return 0
 
@@ -377,7 +392,7 @@ class FormWidget(QWidget):
             self.ssh = mb_tools.ssh_connect(self.user,self.ip)
             if self.ssh != 0:
                 self.mb_data['ip'] = self.ip
-                self.mb_data = config.save_config(self.mb_data,mb_path)
+                self.mb_data = configus.save_config(self.mb_data,mb_path)
                 self.line_ip.setReadOnly(True)
                 self.button_ssh_connect.setEnabled(False)
                 for self.radiobutton in self.radio_button_group:
@@ -404,8 +419,8 @@ class FormWidget(QWidget):
             hu_ver, sw_ver, map_ver, ui_ver = mb_tools.get_version(self.user,self.ip)
         except Exception as E:
             logging.critical(traceback.format_exc())
-            logging_message.input_message(path = self.message_path, message = f'there is error on_change_binary')
-            logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')
+            loggas.input_message(path = self.message_path, message = f'there is error on_change_binary')
+            loggas.input_message(path = self.message_path, message = f'contact the admin for more information')
             hu_ver, sw_ver, map_ver, ui_ver = None     
         temp_version = ''
         temp_version = temp_version + 'HU version: %s' %hu_ver +'\n'
@@ -416,22 +431,22 @@ class FormWidget(QWidget):
 
     def on_start_function_number(self):
         self.function_number = self.qline_function.text()
-        logging_message.input_message(path = self.message_path, message = f'you entered {self.function_number}')
+        loggas.input_message(path = self.message_path, message = f'you entered {self.function_number}')
         if self.statusbar_status == "disconnected":
              self.qline_function.setText('')
              return 0
         if not self.function_number.isdigit():
-            logging_message.input_message(path = self.message_path, message = f'please enter number.')
+            loggas.input_message(path = self.message_path, message = f'please enter number.')
             self.qline_function.setText('')
             return 0
         self.function_number = int(self.qline_function.text())
         if self.function_number == 99:
-            logging_message.input_message(path = self.message_path, message = f'hidden one. get HU trigger from HU')
+            loggas.input_message(path = self.message_path, message = f'hidden one. get HU trigger from HU')
             self.on_get_user_trigger()
             self.qline_function.setText('')
             return 0
         if self.function_number > 8:
-            logging_message.input_message(path = self.message_path, message = f'please enter number under 8.')
+            loggas.input_message(path = self.message_path, message = f'please enter number under 8.')
             self.qline_function.setText('')
             return 0
         else:
@@ -449,13 +464,13 @@ class FormWidget(QWidget):
     def on_open_folder(self):
         #check self.set_dir
         if os.path.isdir(self.set_dir) is True:
-            logging_message.input_message(path = self.message_path, message = f'open folder - {self.set_dir}')
+            loggas.input_message(path = self.message_path, message = f'open folder - {self.set_dir}')
             os.startfile(self.set_dir)
         else:
-            logging_message.input_message(path = self.message_path, message = f'there is no folder - {self.set_dir}')
+            loggas.input_message(path = self.message_path, message = f'there is no folder - {self.set_dir}')
             self.set_dir = os.path.join(os.path.expanduser('~'),'Desktop')
             self.config_data['last_file_path']=self.set_dir
-            self.config_data = config.save_config(self.config_data,config_path)
+            self.config_data = configus.save_config(self.config_data,config_path)
             self.set_dir = self.config_data['last_file_path']
             self.qline_path.setText(self.set_dir)
             os.startfile(self.set_dir)
@@ -463,7 +478,7 @@ class FormWidget(QWidget):
     
     def on_change_binary(self):
         self.binary_folder_name = self.open_folder_name_dialog_no_save()
-        logging_message.input_message(path = self.message_path, message = f'folder path - {self.binary_folder_name}')
+        loggas.input_message(path = self.message_path, message = f'folder path - {self.binary_folder_name}')
         def start():
             if self.binary_folder_name != '':
                 self.set_function_button(False)
@@ -471,8 +486,8 @@ class FormWidget(QWidget):
                     mb_tools.change_binary(self.user,self.ip,self.binary_folder_name)
                 except Exception as E:
                     logging.critical(traceback.format_exc())
-                    logging_message.input_message(path = self.message_path, message = f'there is error on_change_binary')
-                    logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')
+                    loggas.input_message(path = self.message_path, message = f'there is error on_change_binary')
+                    loggas.input_message(path = self.message_path, message = f'contact the admin for more information')
                 self.set_function_button(True)
                 self.new_version_txt = self.call_version_into_textbox()
                 return 0
@@ -488,36 +503,36 @@ class FormWidget(QWidget):
         #logging.info(os.path.isdir(self.check_folder_name))
         if os.path.isdir(self.check_folder_name) == True:
             self.config_data['last_file_path']=self.check_folder_name
-            self.config_data = config.save_config(self.config_data,config_path)
+            self.config_data = configus.save_config(self.config_data,config_path)
             self.set_dir = self.config_data['last_file_path']
-            logging_message.input_message(path = self.message_path, message = f'change path - {self.check_folder_name}')
+            loggas.input_message(path = self.message_path, message = f'change path - {self.check_folder_name}')
         else:
             self.qline_path.setText(self.set_dir)
-            logging_message.input_message(path = self.message_path, message = f'path is not exist - {self.check_folder_name}')
+            loggas.input_message(path = self.message_path, message = f'path is not exist - {self.check_folder_name}')
         return 0
 
     def on_mount_rw(self):
         logging.info('start mount as rw')
-        logging_message.input_message(path = self.message_path, message = f'start mount as rw')
+        loggas.input_message(path = self.message_path, message = f'start mount as rw')
         cmd = self.mb_data[self.current_project]['mount_rw']
         mb_tools.send_by_plink(self.user,self.ip,cmd)
         return 0
 
     def on_open_port(self):
         logging.info('start open port or firewall disable')
-        logging_message.input_message(path = self.message_path, message = f'start open port or firewall disable')
+        loggas.input_message(path = self.message_path, message = f'start open port or firewall disable')
         cmd = self.mb_data[self.current_project]['open_port']
         #logging.info(cmd)
         try:
             mb_tools.send_by_plink(self.user,self.ip,cmd)
         except Exception as E:
             logging.critical(traceback.format_exc())
-            logging_message.input_message(path = self.message_path, message = f'there is error on_open_port')
-            logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')
+            loggas.input_message(path = self.message_path, message = f'there is error on_open_port')
+            loggas.input_message(path = self.message_path, message = f'contact the admin for more information')
         return 0
  
     def on_trigger(self):
-        logging_message.input_message(path = self.message_path, message = f'start make trigger.')
+        loggas.input_message(path = self.message_path, message = f'start make trigger.')
         def start():
             if self.statusbar_status == "disconnected":
                 pass
@@ -528,8 +543,8 @@ class FormWidget(QWidget):
                     mb_tools.get_tmp_screenshot(user = 'root', ip=self.ip,path=self.set_dir,trigger_time=now)
                 except Exception as E:
                     logging.critical(traceback.format_exc())
-                    logging_message.input_message(path = self.message_path, message = f'there is error on_trigger')
-                    logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')
+                    loggas.input_message(path = self.message_path, message = f'there is error on_trigger')
+                    loggas.input_message(path = self.message_path, message = f'contact the admin for more information')
                 return 0
         thread_import = threading.Thread(target=start)
         thread_import.start()
@@ -548,8 +563,8 @@ class FormWidget(QWidget):
                         mb_tools.get_traffic_sdi_dat(self.ssh,self.user,self.ip,path=self.folder_path)
                     except Exception as E:
                         logging.critical(traceback.format_exc())
-                        logging_message.input_message(path = self.message_path, message = f'there is error on_trigger')
-                        logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')       
+                        loggas.input_message(path = self.message_path, message = f'there is error on_trigger')
+                        loggas.input_message(path = self.message_path, message = f'contact the admin for more information')       
                 return 0
             thread_import = threading.Thread(target=start)
             thread_import.start()
@@ -570,8 +585,8 @@ class FormWidget(QWidget):
                         mb_tools.extract_screenshot_from_trigger(self.folder_path)
                     except Exception as E:
                         logging.critical(traceback.format_exc())
-                        logging_message.input_message(path = self.message_path, message = f'there is error on_get_user_trigger')
-                        logging_message.input_message(path = self.message_path, message = f'contact the admin for more information')
+                        loggas.input_message(path = self.message_path, message = f'there is error on_get_user_trigger')
+                        loggas.input_message(path = self.message_path, message = f'contact the admin for more information')
                 self.set_function_button(True)
                 return 0
             
@@ -579,8 +594,16 @@ class FormWidget(QWidget):
             thread_import.start()
         return 0
     
+    def on_change_default_pos(self):
+        loggas.input_message(path = self.message_path, message = f'change default position')
+        google_loca, ok = QInputDialog.getText(self, 'url', 'Enter url:')
+        logging.info(f'this is url - {google_loca}, input status - {ok}')
+        loggas.input_message(path = self.message_path, message = f'this is url - {google_loca}')
+        mb_tools.change_default_pos(google_loca)
+        return 0
+
     def on_test(self):
-        logging_message.input_message(path = self.message_path, message = f'test button')
+        loggas.input_message(path = self.message_path, message = f'test button')
         return 0
 
     def on_extract_screenshot_from_HU(self):

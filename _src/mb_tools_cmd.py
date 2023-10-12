@@ -1,8 +1,18 @@
-import os
+import os, sys
 
+
+#add internal libary
 from _src import mb_tools
-from _src._api import config
 
+refer_api = "local"
+#refer_api = "global"
+
+if refer_api == "global":
+    sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))))
+    from _api import configus
+if refer_api == "local":
+    from _src._api import configus
+#=====================================================
 
 config_path = os.path.join('static','config','config.json')
 mb_config_path = os.path.join('static','config','mb_command.json')
@@ -12,8 +22,8 @@ class cmd_line:
     def __init__(self, version, revision):
         self.version = version
         self.revision = revision
-        self.mb_config_data = config.load_config(mb_config_path)
-        self.config_data = config.load_config(config_path)
+        self.mb_config_data = configus.load_config(mb_config_path)
+        self.config_data = configus.load_config(config_path)
 
     def main(self):
         os.system('color 0A')
@@ -35,6 +45,9 @@ class cmd_line:
         print('01. setup project and ip')
         print('02. check version')
         print('03. make trigger')
+        print('04. change binary')
+        print('05. change defualt position')
+        print('06. remove persistancy')
         print('09. extract screenshot from HU')
         print('10. remount rw')
         print('0. exit')
@@ -52,6 +65,15 @@ class cmd_line:
             return 0
         elif select_number == 3 :
             self.cmd_create_trigger()
+            return 0
+        elif select_number == 4 :
+            self.cmd_change_binary()
+            return 0
+        elif select_number == 5 :
+            self.cmd_change_defualt()
+            return 0
+        elif select_number == 6 :
+            self.cmd_remove_per()
             return 0
         elif select_number == 9 :
             self.cmd_extract_HU()
@@ -85,6 +107,22 @@ class cmd_line:
 
     #===============================================================
 
+    def cmd_change_defualt(self):
+        google_loca = input('location or url : ')
+        value = mb_tools.change_default_pos(google_loca)
+        if value == 1:
+            print('please check your location')
+            os.system('pause')
+            return self.main()
+        else:
+            print('default position has been changed.')
+            os.system('pause')
+        return self.main() 
+
+    def cmd_remove_per(self):
+        mb_tools.reset_persis()
+        return self.main()
+
     def cmd_update_project_ip(self):
         os.system('cls')
         print('====select project====')
@@ -106,7 +144,7 @@ class cmd_line:
         os.system('cls')
         ip = input('please enter ip:')
         self.mb_config_data['ip'] = ip
-        self.mb_config_data = config.save_config(self.mb_config_data,mb_config_path)
+        self.mb_config_data = configus.save_config(self.mb_config_data,mb_config_path)
         print('updated project ip')
         os.system('pause')
         return self.main()
@@ -115,8 +153,11 @@ class cmd_line:
         os.system('cls')
         print('start user trigger')
         mb_tools.make_trigger(user=self.mb_config_data['user'],ip=self.mb_config_data['ip'])
-        os.system('pause')
-        return self.main()
+        c_exit = input('please enter 0, if you exit:')
+        if c_exit == '0':
+            return self.main()
+        else:
+            return self.cmd_create_trigger()
 
     def cmd_check_version(self):
         hu_ver, sw_ver, map_ver, ui_ver = mb_tools.get_version(user=self.mb_config_data['user'],ip=self.mb_config_data['ip'])
@@ -140,8 +181,18 @@ class cmd_line:
             os.system('pause')
         mb_tools.extract_screenshot_from_trigger(trigger_folder_path=trigger_folder_path)
         self.config_data['last_file_path'] = trigger_folder_path
-        self.config_data = config.save_config(self.config_data,config_path)
+        self.config_data = configus.save_config(self.config_data,config_path)
         print('extract HU done!')
+        os.system('pause')
+        return self.main()
+
+
+    def cmd_change_binary(self):
+        os.system('cls')
+        print('start change binary')
+        trigger_folder_path = input('please enter path which navigation in :')
+        mb_tools.change_binary(user=self.mb_config_data['user'],ip=self.mb_config_data['ip'],path_pc=trigger_folder_path)
+        print('change binary Done.')
         os.system('pause')
         return self.main()
 

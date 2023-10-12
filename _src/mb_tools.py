@@ -2,21 +2,31 @@
 #!/usr/bin/python
 import sqlite3
 import paramiko
-import os
+import os, sys
 import datetime
 import shutil
 import re
 
-#add internal libary
-from _src._api import logger, config, logging_message
 
-    
+
+
+#add internal libary
+
+refer_api = "local"
+#refer_api = "global"
+
+if refer_api == "global":
+    sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))))
+    from _api import loggas, configus, xmlas
+if refer_api == "local":
+    from _src._api import loggas, configus, xmlas
+#=====================================================
 #make logpath
-logging= logger.logger
+logging= loggas.logger
 
 #loading config data
 config_path = 'static\config\config.json'
-config_data =config.load_config(config_path)
+config_data =configus.load_config(config_path)
 qss_path = config_data['qss_path']
 message_path = config_data['message_path']
 test_cycle_url = config_data['test_cycle_url']
@@ -92,13 +102,13 @@ def uploadfile(user,ip,file_in_pc,path_target): #return type : 0
     else:
         command = f'static\\tool\putty\pscp.exe "{file_in_pc}" "{user}@{ip}:{path_target}"'
         #logging.info(command)
-        #logging_message.input_message(path = message_path, message = f'{command}')
+        #loggas.input_message(path = message_path, message = f'{command}')
         os.system(command)
     return 0
 
 def ssh_connect(user,ip): #return type : ssh or 0
     logging.debug('start connect target')
-    logging_message.input_message(path = message_path, message = 'start connect target')
+    loggas.input_message(path = message_path, message = 'start connect target')
     add_known_hosts(user,ip)
     autostoring_cache_plink(user,ip)
     ssh_client = paramiko.SSHClient()
@@ -106,11 +116,11 @@ def ssh_connect(user,ip): #return type : ssh or 0
     ssh_client.connect(ip, username=user, password="", timeout=1)    # 대상IP, User명, 패스워드 입력
     try:
         logging.debug('ssh connected. %s@%s' %(user,ip))    # ssh 정상 접속 후 메시지 출력
-        logging_message.input_message(path = message_path, message = 'connected - %s@%s' %(user,ip))
+        loggas.input_message(path = message_path, message = 'connected - %s@%s' %(user,ip))
         return ssh_client
     except Exception as err:
         logging.debug(err)    # ssh 접속 실패 시 ssh 관련 에러 메시지 출력
-        logging_message.input_message(path = message_path, message = 'no response from server or ip')
+        loggas.input_message(path = message_path, message = 'no response from server or ip')
         return 0
 
 def quit_ssh(ssh): #return type : 0
@@ -131,23 +141,20 @@ def check_ssh_connection(ssh): #return type : bool
 
 def make_trigger(user,ip): #return type : str, str
     logging.debug('send user trigger.')
-    mb_data =config.load_config(mb_path)
-    current_project = mb_data['current_project']
-    command = mb_data[current_project]['user_trigger']
+    mb_data =configus.load_config(mb_path)
+    command = mb_data[mb_data['current_project']]['user_trigger']
     logging.info(command)
     lines = send_by_plink(user,ip,command)
     now = str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
     #for line in lines:    # for문을 통해 명령어 결과값 출력.
     #    re = str(line).replace('\n', '')
-    #    logging_message.input_message(path = message_path, message = re)
+    #    loggas.input_message(path = message_path, message = re)
     return now, lines
-    
 
 def get_tmp_screenshot(user = 'root',ip=None,file=None,path='./static/temp',trigger_time=None):  #return type : 0
-    mb_data =config.load_config(mb_path)
-    current_project = mb_data['current_project']
+    mb_data =configus.load_config(mb_path)
     if file == None:
-        file = mb_data[current_project]['temp_png_path']
+        file = mb_data[mb_data['current_project']]['temp_png_path']
     download_result, download_path = download_file(user,ip,file,path)
     if download_result is not True:
         return 0
@@ -160,16 +167,111 @@ def get_tmp_screenshot(user = 'root',ip=None,file=None,path='./static/temp',trig
         os.rename(download_path,change_path)
         return 0
 
+def get_location_from_HU ():
+    return 0
+
 
 ## ============================================================
 ## ============================================================
 ## those are call functions from UI 
 
+#============================== service ============================================
+
+def stop_navi_service():
+    mb_data =configus.load_config(mb_path)
+    user = mb_data['user']
+    ip = mb_data['ip']
+    send_by_plink(user,ip,mb_data[mb_data['current_project']]['stop_service'])
+    return 0
+
+def start_navi_service():
+    mb_data =configus.load_config(mb_path)
+    user = mb_data['user']
+    ip = mb_data['ip']
+    send_by_plink(user,ip,mb_data[mb_data['current_project']]['start_service'])
+    return 0
+
+#============================== persistancy ============================================
+def reset_persis():
+    mb_data =configus.load_config(mb_path)
+    user = mb_data['user']
+    ip = mb_data['ip']
+    stop_navi_service()
+    send_by_plink(user,ip,mb_data[mb_data['current_project']]['reset_persistency'])
+    start_navi_service()
+    return 0
+
+#============================== change pos ============================================
+
+def convert_location(url):
+    #get lattitude and longtude
+    locations = re.findall('-?[0-9]{1,3}\.[0-9]{5,7}',url)
+    if len(locations) <2:
+        return 1
+    else:
+        latitude = float(locations[0])
+        longtude = float(locations[1])
+        con_latitude = str(round(latitude*60*60*100))
+        con_longtude = str(round(longtude*60*60*100))
+        return latitude, longtude, con_latitude, con_longtude
+
+def change_default_pos(url): #return type : bool
+    #make backup file
+    mb_data =configus.load_config(mb_path)
+    map_evn_file = mb_data[mb_data['current_project']]['map_env_path']
+    map_evn_file_ori = map_evn_file.replace('.','_ori.')
+    map_evn_file_back = map_evn_file.replace('.','_back.')
+    #logging.info(map_evn_file)
+    #logging.info(map_evn_file_ori)
+    #logging.info(map_evn_file_back)
+
+    #copy files
+    check_ori_file = file_check_in_target(user=mb_data['user'],ip=mb_data['ip'],file = map_evn_file_ori)
+    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= mb_data[mb_data['current_project']]['mount_rw'])
+    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= f'cp {map_evn_file} {map_evn_file_ori}') if check_ori_file is False else None
+    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= f'cp {map_evn_file} {map_evn_file_back}')
+
+    download_result, download_path = download_file(user=mb_data['user'],ip=mb_data['ip'],file=map_evn_file)
+    if download_result is False:
+        return False
+    
+    #replace xml file
+    if download_result is True:
+        logging.info(download_path)
+        loca = convert_location(url)
+        if loca == 1:
+            return False
+        else:
+            logging.info(f'lati : {loca[0]} - convert {loca[2]}')
+            logging.info(f'long : {loca[1]} - convert {loca[3]}')
+            
+            tree = xmlas.load_xml(download_path)
+            current_lati = xmlas.get_txt_nv_key_value(tree,"DEFAULT_LATITUDE")
+            current_long = xmlas.get_txt_nv_key_value(tree,"DEFAULT_LONGITUDE")
+            logging.info(f'change DEFAULT_LATITUDE {current_lati} ->  {loca[2]} ')
+            logging.info(f'change DEFAULT_LONGITUDE {current_long} ->  {loca[3]} ')
+            tree = xmlas.change_txt_nv_key_value(tree,"DEFAULT_LATITUDE",loca[2])
+            tree = xmlas.change_txt_nv_key_value(tree,"DEFAULT_LONGITUDE",loca[3])
+            xmlas.save_xml(tree, download_path)
+    #input xml into server
+    usre = mb_data['user']
+    ip = mb_data['ip']
+    command = f'static\\tool\putty\pscp.exe "{download_path}" "{usre}@{ip}:{map_evn_file}"'
+    os.system(command)
+    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= f'chown -R nav:navi {download_path} | chmod 750 {download_path}')
+
+    #remove persistancy
+    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= mb_data[mb_data['current_project']]['stop_service'])
+    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= mb_data[mb_data['current_project']]['reset_persistancy'])
+    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= mb_data[mb_data['current_project']]['start_service'])
+    os.remove(download_path)
+    return True
+
 #============================== version ============================================
 def get_map_version(user,ip,path = './static/temp'): #return type : str
-    mb_data =config.load_config(mb_path)
+    mb_data =configus.load_config(mb_path)
     current_project = mb_data['current_project']
-    map_path = mb_data[current_project]['dbpath']
+    map_path = mb_data[current_project]['map_info']
     map_ver = '-'
     download_result, download_path = download_file(user,ip,map_path,path)
     if download_result == False:
@@ -189,7 +291,7 @@ def get_map_version(user,ip,path = './static/temp'): #return type : str
 
 def get_version(user,ip): #return type : map(str)
     logging.info('start get version')
-    mb_data =config.load_config(mb_path)
+    mb_data =configus.load_config(mb_path)
     current_project = mb_data['current_project']
     hu_ver = send_by_plink(user,ip,mb_data[current_project]['hu_version']).replace('\n', '').replace('\r', '')
     sw_ver = send_by_plink(user,ip,mb_data[current_project]['sw_version']).replace('\n', '').replace('\r', '')
@@ -201,29 +303,29 @@ def get_version(user,ip): #return type : map(str)
 
 #============================== traffic ============================================
 def get_traffic_sdi_dat(user,ip,path='./static/temp/traffic'): #return type : int
-    mb_data =config.load_config(mb_path)
+    mb_data =configus.load_config(mb_path)
     current_project = mb_data['current_project']
     traffic_sdi_dat = mb_data[current_project]['traffic_sdi_dat']
     sdi_path = os.path.join(path,os.path.basename(traffic_sdi_dat))
     os.remove(sdi_path) if file_check_in_pc(sdi_path,path) is True else 0
     download_file(user,ip,traffic_sdi_dat,path)
-    logging_message.input_message(path = message_path, message = 'traffic sdi downloading done!')
-    logging_message.input_message(path = message_path, message = 'downloading path - %s' %path)
+    loggas.input_message(path = message_path, message = 'traffic sdi downloading done!')
+    loggas.input_message(path = message_path, message = 'downloading path - %s' %path)
     return 0
 
 #============================== binary ============================================
 def change_binary(user,ip,path_pc):
     autostoring_cache_plink(user,ip)
-    mb_data =config.load_config(mb_path)
+    mb_data =configus.load_config(mb_path)
     current_project = mb_data['current_project']
     #check binary exist
     filelist = os.listdir(path_pc)
     if 'nv_main' not in filelist:
         logging.info(f'there is no navi binary')
-        logging_message.input_message(path = message_path, message = f'there is no navi binary')
+        loggas.input_message(path = message_path, message = f'there is no navi binary')
         return 0
     #how to change binary
-    logging_message.input_message(path = message_path, message = f'start change binary')
+    loggas.input_message(path = message_path, message = f'start change binary')
     commands = mb_data[current_project]['change_binary']
     #following the step.
     for commd in commands:
@@ -235,15 +337,31 @@ def change_binary(user,ip,path_pc):
                 uploadfile(user,ip,os.path.join(path_pc,fi),commds[1])    
             #need file check -> no problme = pass / else -> break and return 0
             logging.info(os.path.getsize(path_pc))
-        if commds[0] == 'change_new_binary':
-            send_by_plink(user,ip,commds[1])
-    logging_message.input_message(path = message_path, message = f'change binary done.')
+    loggas.input_message(path = message_path, message = f'change binary done.')
     return 0
 
 #============================== trigger ============================================
+
+def extract_lz4(file_path='./static/temp/trigger'): #return type : int
+    #check lz4 already decompress.
+    if os.path.exists(file_path[:-4]) is True:
+        logging.info(f'file already exist - {file_path}')
+        return 0 
+    lz4_path = 'static\lz4_win64_v1_9_4\lz4.exe'
+    command = '%s -frm "%s"' %(lz4_path,file_path)
+    logging.info(command)
+    os.system(command)
+    return 0
+
+def extract_png_from_tar(file_path='static/temp/trigger'): #return type : int
+    command = 'tar -xvf "%s" -C "%s" *.png' %(file_path,os.path.dirname(os.path.abspath(file_path)))
+    logging.info(command)
+    os.system(command)
+    return 0
+
 def get_trigger(user,ip,folder_path='./static/temp/trigger'): #return type : int
-    logging_message.input_message(path = message_path, message = 'trigger downloading start!')
-    mb_data =config.load_config(mb_path)
+    loggas.input_message(path = message_path, message = 'trigger downloading start!')
+    mb_data =configus.load_config(mb_path)
     current_project = mb_data['current_project']
     trigger_path =mb_data[current_project]['path_loca_trigger']
     trigger_lines = send_by_plink(user,ip, f'ls {trigger_path}')
@@ -260,32 +378,15 @@ def get_trigger(user,ip,folder_path='./static/temp/trigger'): #return type : int
             trigger_file_path = f"{trigger_path}/{trigger_file_name}"
             download_file(user,ip,trigger_file_path,path=folder_path)
     logging.info('trigger downloading done!')
-    logging_message.input_message(path = message_path, message = 'trigger downloading done!')
-    logging_message.input_message(path = message_path, message = f'downloading path - {folder_path}')
+    loggas.input_message(path = message_path, message = 'trigger downloading done!')
+    loggas.input_message(path = message_path, message = f'downloading path - {folder_path}')
     return 0
 
 
 def extract_screenshot_from_trigger(trigger_folder_path='./static/temp/trigger'): #return type : int
     logging.info(trigger_folder_path)
-    logging_message.input_message(path = message_path, message = 'start to extract screenshot from HU done!')
-    
-    def extract_png_from_tar(file_path='static/temp/trigger'): #return type : int
-        command = 'tar -xvf "%s" -C "%s" *.png' %(file_path,os.path.dirname(os.path.abspath(file_path)))
-        logging.info(command)
-        os.system(command)
-        return 0
-    
-    def extract_lz4(file_path='./static/temp/trigger'): #return type : int
-        #check lz4 already decompress.
-        if os.path.exists(file_path[:-4]) is True:
-            logging.info(f'file already exist - {file_path}')
-            return 0 
-        lz4_path = 'static\lz4_win64_v1_9_4\lz4.exe'
-        command = '%s -frm "%s"' %(lz4_path,file_path)
-        logging.info(command)
-        os.system(command)
-        return 0
-    
+    loggas.input_message(path = message_path, message = 'start to extract screenshot from HU done!')
+        
     #extraf tar from lz4
     files = os.listdir(trigger_folder_path)
     for file in files:
@@ -322,11 +423,11 @@ def extract_screenshot_from_trigger(trigger_folder_path='./static/temp/trigger')
             logging.info(onlyfor)
             shutil.rmtree(os.path.join(trigger_folder_path,onlyfor))
     logging.info('extract screenshot from HU done!')
-    logging_message.input_message(path = message_path, message = 'extract screenshot from HU done!')
-    logging_message.input_message(path = message_path, message = 'downloading path - %s' %trigger_folder_path)
+    loggas.input_message(path = message_path, message = 'extract screenshot from HU done!')
+    loggas.input_message(path = message_path, message = 'downloading path - %s' %trigger_folder_path)
     return 0
 
 
 if __name__ == "__main__":
     logging.info(__name__)
-    logging_message.input_message(path = message_path, message = __name__)
+    loggas.input_message(path = message_path, message = __name__)
