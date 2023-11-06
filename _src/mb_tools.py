@@ -363,8 +363,9 @@ def get_trigger(user,ip,folder_path='./static/temp/trigger'): #return type : int
     loggas.input_message(path = message_path, message = 'trigger downloading start!')
     mb_data =configus.load_config(mb_path)
     current_project = mb_data['current_project']
-    trigger_path =mb_data[current_project]['path_loca_trigger']
-    trigger_lines = send_by_plink(user,ip, f'ls {trigger_path}')
+    trigger_path = mb_data[current_project]['path_loca_trigger']
+    get_trigger_list = mb_data[current_project]['get_trigger_list']
+    trigger_lines = send_by_plink(user,ip, f'ls {trigger_path} | grep "{get_trigger_list}"')
     str_today = datetime.date.today().strftime("%Y%m%d")
     #logging.info(trigger_lines.split('\n'))
     #logging.info(str_today)

@@ -18,7 +18,7 @@ if refer_api == "local":
 logging= loggas.logger
 logging_file_name = loggas.log_full_name
 
-version = 'MB Tool v0.8'
+version = 'MB Tool v1.0'
 revision_list=[
     'Revision list',
     'v0.1 (2022-01-24) : proto type release (beta ver.)',
@@ -29,6 +29,7 @@ revision_list=[
     'v0.6 (2022-06-20) : add function "mount as rw"',
     'v0.7 (2023-07-12) : add cmd funtion',
     'v0.8 (2023-07-12) : add function "change default pos"',
+    'v1.0 (2023-11-06) : log fiter implemented.',
     '================================================'
     ]
 
