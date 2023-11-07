@@ -6,7 +6,7 @@ import os, sys
 import datetime
 import shutil
 import re
-
+import traceback
 
 
 
@@ -170,6 +170,20 @@ def get_tmp_screenshot(user = 'root',ip=None,file=None,path='./static/temp',trig
 def get_location_from_HU ():
     return 0
 
+
+def get_trigger_screenshot(folder_path):
+    mb_data =configus.load_config(mb_path)
+    user = mb_data['user']
+    ip = mb_data['ip']
+    E = None
+    try:
+        get_trigger(user,ip,folder_path=folder_path)
+        extract_screenshot_from_trigger(folder_path)
+    except Exception as E:
+        logging.critical(traceback.format_exc())
+        loggas.input_message(path = message_path, message = f'there is error on_get_user_trigger')
+        loggas.input_message(path = message_path, message = f'contact the admin for more information')
+    return E
 
 ## ============================================================
 ## ============================================================
@@ -364,20 +378,22 @@ def get_trigger(user,ip,folder_path='./static/temp/trigger'): #return type : int
     mb_data =configus.load_config(mb_path)
     current_project = mb_data['current_project']
     trigger_path = mb_data[current_project]['path_loca_trigger']
-    get_trigger_list = mb_data[current_project]['get_trigger_list']
-    trigger_lines = send_by_plink(user,ip, f'ls {trigger_path} | grep "{get_trigger_list}"')
+    sort_trigger_list = mb_data[current_project]['sort_trigger_list']
+    trigger_lines = send_by_plink(user,ip, f'ls {trigger_path}')
     str_today = datetime.date.today().strftime("%Y%m%d")
-    #logging.info(trigger_lines.split('\n'))
-    #logging.info(str_today)
-    for trigger_file_name in trigger_lines.split('\n'):
-        hu_date = re.findall('[0-9]{8}',trigger_file_name)[0] if len(re.findall('[0-9]{8}',trigger_file_name)) == 1 else None
-        #logging.info(hu_date)
-        if hu_date == None or str_today > hu_date:
-            logging.info(f'str_today - {str_today}, hu_date - {hu_date}')
-        else:
+    trigger_list = trigger_lines.split('\n')
+    #logging.info(trigger_list)
+    #logging.info(sort_trigger_list)
+    sorted_trigger_list = [trigger for trigger in trigger_list if any(xs in trigger for xs in sort_trigger_list)]
+    #logging.info(sorted_trigger_list)
+
+    for trigger_file_name in sorted_trigger_list:
+        if str_today in trigger_file_name:
             logging.info(f'downloading {trigger_file_name}')
             trigger_file_path = f"{trigger_path}/{trigger_file_name}"
             download_file(user,ip,trigger_file_path,path=folder_path)
+        else:
+            pass
     logging.info('trigger downloading done!')
     loggas.input_message(path = message_path, message = 'trigger downloading done!')
     loggas.input_message(path = message_path, message = f'downloading path - {folder_path}')

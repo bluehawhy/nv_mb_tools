@@ -108,11 +108,9 @@ class LoginForm(QWidget):
         msg = QMessageBox()
         self.user = self.line_id.text()
         self.password = self.line_password.text()
-        self.session_list = zyra.initsession(username = self.user, password= self.password)
-        self.session = self.session_list[0]
-        self.session_info = self.session_list[1]
+        self.session,self.session_info, self.status_login = zyra.initsession(username = self.user, password= self.password)
         #fail to login
-        if self.session_info == None:
+        if self.status_login is False:
             QMessageBox.about(self, "Login Fail", "please check your password or internet connection")
         #if loggin success
         else:

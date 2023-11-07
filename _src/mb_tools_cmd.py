@@ -50,6 +50,7 @@ class cmd_line:
         print('06. remove persistancy')
         print('09. extract screenshot from HU')
         print('10. remount rw')
+        print('99.get tirrger and take screen shot')
         print('0. exit')
         select_number = input('please enter number:')
         select_number = int(select_number) if select_number.isdigit() else None
@@ -81,6 +82,9 @@ class cmd_line:
         elif select_number == 10 :
             self.cmd_remount()
             return 0
+        elif select_number == 99 :
+            self.cmd_get_trigger_screenshot()
+            return 0
         else:
             self.wrong_select(select_number)
             return 0
@@ -107,6 +111,22 @@ class cmd_line:
 
     #===============================================================
 
+    def cmd_get_trigger_screenshot(self):
+        os.system('cls')
+        print('start extract HU')
+        print('use previous folder, you just press enter - %s' %self.config_data['last_file_path'])
+        trigger_folder_path = input('please enter path which trigger stored :')
+        if os.path.isdir(trigger_folder_path) is False:
+            trigger_folder_path = self.config_data['last_file_path']
+            print('path is wrong so use the last path %s' %trigger_folder_path)
+            os.system('pause')
+        mb_tools.get_trigger_screenshot(trigger_folder_path)
+        self.config_data['last_file_path'] = trigger_folder_path
+        self.config_data = configus.save_config(self.config_data,config_path)
+        print('extract HU done!')
+        os.system('pause')
+        return self.main()
+  
     def cmd_change_defualt(self):
         google_loca = input('location or url : ')
         value = mb_tools.change_default_pos(google_loca)

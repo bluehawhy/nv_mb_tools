@@ -580,16 +580,9 @@ class FormWidget(QWidget):
                 if self.folder_path =='':
                     pass
                 else:
-                    try:
-                        mb_tools.get_trigger(self.user,self.ip,folder_path=self.folder_path)
-                        mb_tools.extract_screenshot_from_trigger(self.folder_path)
-                    except Exception as E:
-                        logging.critical(traceback.format_exc())
-                        loggas.input_message(path = self.message_path, message = f'there is error on_get_user_trigger')
-                        loggas.input_message(path = self.message_path, message = f'contact the admin for more information')
+                    E = mb_tools.get_trigger_screenshot(self.folder_path)
                 self.set_function_button(True)
                 return 0
-            
             thread_import = threading.Thread(target=start)
             thread_import.start()
         return 0

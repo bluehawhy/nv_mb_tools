@@ -18,7 +18,7 @@ if refer_api == "local":
 logging= loggas.logger
 logging_file_name = loggas.log_full_name
 
-version = 'MB Tool v1.0'
+version = 'MB Tool v1.01'
 revision_list=[
     'Revision list',
     'v0.1 (2022-01-24) : proto type release (beta ver.)',
@@ -30,6 +30,7 @@ revision_list=[
     'v0.7 (2023-07-12) : add cmd funtion',
     'v0.8 (2023-07-12) : add function "change default pos"',
     'v1.0 (2023-11-06) : log fiter implemented.',
+    'v1.01 (2023-11-07) : bug fix',
     '================================================'
     ]
 
@@ -77,10 +78,7 @@ def prod_app():
     return 0
 
 def debug_app():
-    urls = [r'https://www.google.com/maps/place/LOTTE+Mart+Sasang/data=!4m6!3m5!1s0x3568c215bedeac41:0xf0dc7ce120c78890!8m2!3d35.1275904!4d128.9683768!16s%2Fg%2F1wfcm0pz?entry=ttu',
-    r"https://www.google.com/maps/place/35%C2%B007'39.3%22N+128%C2%B058'06.2%22E/@-37.8252474,144.9498693,15.17z/data=!4m4!3m3!8m2!3d35.1275904!4d128.9683768?entry=ttu",
-    '40.85152747245126, 14.268332188607069']
-    mb_tools.change_default_pos(urls[-1])
+    login_app()
     return 0
     
 if __name__ =='__main__':
