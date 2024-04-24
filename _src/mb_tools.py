@@ -139,10 +139,34 @@ def check_ssh_connection(ssh): #return type : bool
 ## ============================================================
 ## those are functions during implementation 
 
+
+def target_reset(user,ip): #return type : str, str
+    logging.debug('send target reset')
+    mb_data =configus.load_config(mb_path)
+    command = 'ssh  -o StrictHostKeyChecking=no root@10.120.1.97 ./ifs/bin/reset'
+    lines = send_by_plink(user,ip,command)
+    now = str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
+    #for line in lines:    # for문을 통해 명령어 결과값 출력.
+    #    re = str(line).replace('\n', '')
+    #    loggas.input_message(path = message_path, message = re)
+    return now, lines
+
+
 def make_trigger(user,ip): #return type : str, str
     logging.debug('send user trigger.')
     mb_data =configus.load_config(mb_path)
     command = mb_data[mb_data['current_project']]['user_trigger']
+    logging.info(command)
+    lines = send_by_plink(user,ip,command)
+    now = str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
+    #for line in lines:    # for문을 통해 명령어 결과값 출력.
+    #    re = str(line).replace('\n', '')
+    #    loggas.input_message(path = message_path, message = re)
+    return now, lines
+
+def partion_enlarge(user,ip): #return type : str, str
+    mb_data =configus.load_config(mb_path)
+    command = f"{mb_data[mb_data['current_project']]['partion_enlarge']}"
     logging.info(command)
     lines = send_by_plink(user,ip,command)
     now = str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
@@ -174,8 +198,8 @@ def get_location_from_HU ():
 def get_trigger_screenshot(folder_path):
     mb_data =configus.load_config(mb_path)
     user = mb_data['user']
-    ip = mb_data['ip']
-    E = None
+    ip = mb_data['current_ip']
+    error = None
     try:
         get_trigger(user,ip,folder_path=folder_path)
         extract_screenshot_from_trigger(folder_path)
@@ -183,7 +207,8 @@ def get_trigger_screenshot(folder_path):
         logging.critical(traceback.format_exc())
         loggas.input_message(path = message_path, message = f'there is error on_get_user_trigger')
         loggas.input_message(path = message_path, message = f'contact the admin for more information')
-    return E
+        error = E
+    return error
 
 ## ============================================================
 ## ============================================================
@@ -194,14 +219,14 @@ def get_trigger_screenshot(folder_path):
 def stop_navi_service():
     mb_data =configus.load_config(mb_path)
     user = mb_data['user']
-    ip = mb_data['ip']
+    ip = mb_data['current_ip']
     send_by_plink(user,ip,mb_data[mb_data['current_project']]['stop_service'])
     return 0
 
 def start_navi_service():
     mb_data =configus.load_config(mb_path)
     user = mb_data['user']
-    ip = mb_data['ip']
+    ip = mb_data['current_ip']
     send_by_plink(user,ip,mb_data[mb_data['current_project']]['start_service'])
     return 0
 
@@ -209,7 +234,7 @@ def start_navi_service():
 def reset_persis():
     mb_data =configus.load_config(mb_path)
     user = mb_data['user']
-    ip = mb_data['ip']
+    ip = mb_data['current_ip']
     stop_navi_service()
     send_by_plink(user,ip,mb_data[mb_data['current_project']]['reset_persistency'])
     start_navi_service()
@@ -229,26 +254,25 @@ def convert_location(url):
         con_longtude = str(round(longtude*60*60*100))
         return latitude, longtude, con_latitude, con_longtude
 
-def change_default_pos(url): #return type : bool
-    #make backup file
+def backup_navi_environment(map_evn_file):
     mb_data =configus.load_config(mb_path)
-    map_evn_file = mb_data[mb_data['current_project']]['map_env_path']
     map_evn_file_ori = map_evn_file.replace('.','_ori.')
     map_evn_file_back = map_evn_file.replace('.','_back.')
-    #logging.info(map_evn_file)
-    #logging.info(map_evn_file_ori)
-    #logging.info(map_evn_file_back)
 
     #copy files
-    check_ori_file = file_check_in_target(user=mb_data['user'],ip=mb_data['ip'],file = map_evn_file_ori)
-    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= mb_data[mb_data['current_project']]['mount_rw'])
-    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= f'cp {map_evn_file} {map_evn_file_ori}') if check_ori_file is False else None
-    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= f'cp {map_evn_file} {map_evn_file_back}')
+    check_ori_file = file_check_in_target(user=mb_data['user'],ip=mb_data['current_ip'],file = map_evn_file_ori)
+    send_by_plink(user=mb_data['user'],ip=mb_data['current_ip'],command= mb_data[mb_data['current_project']]['mount_rw'])
+    send_by_plink(user=mb_data['user'],ip=mb_data['current_ip'],command= f'cp {map_evn_file} {map_evn_file_ori}') if check_ori_file is False else None
+    send_by_plink(user=mb_data['user'],ip=mb_data['current_ip'],command= f'cp {map_evn_file} {map_evn_file_back}')
+    return 0
 
-    download_result, download_path = download_file(user=mb_data['user'],ip=mb_data['ip'],file=map_evn_file)
+
+def update_pos_into_navi_environment(map_evn_file,url):
+    mb_data =configus.load_config(mb_path)
+    download_result, download_path = download_file(user=mb_data['user'],ip=mb_data['current_ip'],file=map_evn_file)
     if download_result is False:
         return False
-    
+
     #replace xml file
     if download_result is True:
         logging.info(download_path)
@@ -269,18 +293,29 @@ def change_default_pos(url): #return type : bool
             xmlas.save_xml(tree, download_path)
     #input xml into server
     usre = mb_data['user']
-    ip = mb_data['ip']
+    ip = mb_data['current_ip']
     command = f'static\\tool\putty\pscp.exe "{download_path}" "{usre}@{ip}:{map_evn_file}"'
     os.system(command)
-    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= f'chown -R nav:navi {download_path} | chmod 750 {download_path}')
+    send_by_plink(user=mb_data['user'],ip=mb_data['current_ip'],command= f'chown -R nav:navi {download_path} | chmod 750 {download_path}')
 
     #remove persistancy
-    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= mb_data[mb_data['current_project']]['stop_service'])
-    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= mb_data[mb_data['current_project']]['reset_persistancy'])
-    send_by_plink(user=mb_data['user'],ip=mb_data['ip'],command= mb_data[mb_data['current_project']]['start_service'])
+    send_by_plink(user=mb_data['user'],ip=mb_data['current_ip'],command= mb_data[mb_data['current_project']]['stop_service'])
+    send_by_plink(user=mb_data['user'],ip=mb_data['current_ip'],command= mb_data[mb_data['current_project']]['reset_persistancy'])
+    send_by_plink(user=mb_data['user'],ip=mb_data['current_ip'],command= mb_data[mb_data['current_project']]['start_service'])
     os.remove(download_path)
     return True
 
+
+def change_default_pos(url): #return type : bool
+    mb_data =configus.load_config(mb_path)
+    map_evn_file = mb_data[mb_data['current_project']]['map_env_path']
+    
+    return_value = False
+    for file in map_evn_file:
+        backup_navi_environment(file)
+        update_value = update_pos_into_navi_environment(file,url)
+        return_value = (return_value|update_value)
+    return return_value
 #============================== version ============================================
 def get_map_version(user,ip,path = './static/temp'): #return type : str
     mb_data =configus.load_config(mb_path)

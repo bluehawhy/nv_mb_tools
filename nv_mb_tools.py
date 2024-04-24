@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QApplication
 
 
 #add internal libary
-from _src import mb_tools_ui, mb_tools_cmd, mb_tools
+from _src import mb_tools_cmd, mb_tools
 
 refer_api = "local"
 #refer_api = "global"
@@ -18,7 +18,7 @@ if refer_api == "local":
 logging= loggas.logger
 logging_file_name = loggas.log_full_name
 
-version = 'MB Tool v1.01'
+version = 'MB Tool v1.2'
 revision_list=[
     'Revision list',
     'v0.1 (2022-01-24) : proto type release (beta ver.)',
@@ -31,21 +31,14 @@ revision_list=[
     'v0.8 (2023-07-12) : add function "change default pos"',
     'v1.0 (2023-11-06) : log fiter implemented.',
     'v1.01 (2023-11-07) : bug fix',
+    'v1.1 (2024-01-31) : add some function',
+    'v1.2 (2024-02-05) : add reset',
     '================================================'
     ]
 
 config_path ='static\config\config.json'
 config_data =configus.load_config(config_path)
 message_path = config_data['message_path']
-
-def function_app():
-    loggas.remove_message(message_path)
-    loggas.input_message(path = message_path,message = version, settime=False)
-    for revision in revision_list:
-        loggas.input_message(path = message_path,message = revision, settime=False)
-    app = QApplication(sys.argv)
-    ex = mb_tools_ui.MyMainWindow(version)
-    sys.exit(app.exec_())
 
 def function_cmd():
     cmd_line = mb_tools_cmd.cmd_line(version = version,revision=revision_list)
@@ -63,24 +56,17 @@ def prod_app():
     os.system('color 0A') if license['user'] != 'miskang' else None
     #os.system('mode con cols=70 lines=5') if license['user'] != 'miskang' else None
     if lic_validation == True:
-        logging.info('license is valild - %s' %str(license))
-        print('which one do you need?')
-        print('1. ui')
-        print('2. console')
-        num_run_type = input('please enter number:')
-        if num_run_type == '1':
-            function_app()
-        else:
-            function_cmd()
+        function_cmd()
     else:
         logging.info('license is invalild - %s need up to date' %str(license))
         login_app()
     return 0
 
 def debug_app():
-    login_app()
-    return 0
+    #mb_tools.target_reset(user='root',ip='10.120.1.91')
+    mb_tools.change_default_pos(url = '-33.933382610133464, 151.18100410276847')
+    #print(True|True)
     
 if __name__ =='__main__':
-    prod_app()
+    debug_app()
 

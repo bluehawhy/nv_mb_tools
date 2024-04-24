@@ -36,20 +36,24 @@ class cmd_line:
         print('================================================')
         
         print('        current project - %s' %self.mb_config_data['current_project'])
-        print('        current ip -      %s' %self.mb_config_data['ip'])
+        print('        current ip -      %s' %self.mb_config_data['current_ip'])
         print('        trigger path -    %s' %self.config_data['last_file_path'])
         print('================================================')
         #===== input menu list =======
         print('#===== input menu list =======')
         print('please enter you want')
-        print('01. setup project and ip')
-        print('02. check version')
+        print('01. target reset')
+        print('02. set name server')
         print('03. make trigger')
         print('04. change binary')
         print('05. change defualt position')
         print('06. remove persistancy')
         print('09. extract screenshot from HU')
-        print('10. remount rw')
+        print('10. check version')
+        print('11. remount rw')
+        print('90. setup project and ip')
+        print('91. disable verity')
+        print('92. partion enlarge')
         print('99.get tirrger and take screen shot')
         print('0. exit')
         select_number = input('please enter number:')
@@ -59,10 +63,10 @@ class cmd_line:
             self.exit_main()
             return 0
         elif select_number == 1 :
-            self.cmd_update_project_ip()
+            self.cmd_target_reset()
             return 0
         elif select_number == 2 :
-            self.cmd_check_version()
+            self.cmd_set_name_server()
             return 0
         elif select_number == 3 :
             self.cmd_create_trigger()
@@ -80,7 +84,19 @@ class cmd_line:
             self.cmd_extract_HU()
             return 0
         elif select_number == 10 :
+            self.cmd_check_version()
+            return 0
+        elif select_number == 11 :
             self.cmd_remount()
+            return 0
+        elif select_number == 90 :
+            self.cmd_update_project_ip()
+            return 0
+        elif select_number == 91 :
+            self.cmd_disable_verity()
+            return 0
+        elif select_number == 92 :
+            self.cmd_partion_enlarge()
             return 0
         elif select_number == 99 :
             self.cmd_get_trigger_screenshot()
@@ -139,11 +155,64 @@ class cmd_line:
             os.system('pause')
         return self.main() 
 
+    def cmd_target_reset(self):
+        mb_tools.target_reset(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'])
+        return self.main()
+
+
     def cmd_remove_per(self):
         mb_tools.reset_persis()
         return self.main()
 
+    def cmd_set_name_server(self):
+        os.system('cls')
+        print('start set name server')
+        cmd = self.mb_config_data[self.mb_config_data['current_project']]['mount_rw']
+        mb_tools.send_by_plink(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'],command=cmd)
+        cmd = self.mb_config_data[self.mb_config_data['current_project']]['set_name_server']
+        mb_tools.send_by_plink(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'],command=cmd)
+        print('set name server done!')
+        os.system('pause')
+        return self.main()
+
+    def cmd_partion_enlarge(self):
+        os.system('cls')
+        print('start partion enlarge')
+        cmd = self.mb_config_data[self.mb_config_data['current_project']]['mount_rw']
+        mb_tools.send_by_plink(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'],command=cmd)
+        cmd = self.mb_config_data[self.mb_config_data['current_project']]['partion_enlarge']
+        mb_tools.send_by_plink(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'],command=cmd)
+        print('partion enlarge done!')
+        os.system('pause')
+    
+        return self.main()
+
+    def cmd_disable_verity(self):
+        os.system('cls')
+        print('start disable_verity')
+        os.system(f"{self.mb_config_data[self.mb_config_data['current_project']]['disable_verity'][0]} {self.mb_config_data['current_ip']}")
+        os.system(self.mb_config_data[self.mb_config_data['current_project']]['disable_verity'][1])
+        os.system('pause')
+        return self.main() 
+
     def cmd_update_project_ip(self):
+        os.system('cls')
+        print('====select ====')
+        print('1. project')
+        print('2. ip')
+        print('0. back')
+        self.num_project = input('please enter project:')
+        if self.num_project == '0':
+            return self.main()
+        elif self.num_project == '1':
+            return self.cmd_update_project()
+        elif self.num_project == '2':
+            return self.cmd_update_ip()
+        else:
+            print('please select correct number')
+            return self.cmd_update_project_ip()
+
+    def cmd_update_project(self):
         os.system('cls')
         print('====select project====')
         print('0. skip')
@@ -155,15 +224,35 @@ class cmd_line:
             print('please select correct number')
             return self.cmd_update_project_ip()
         if self.num_project == 0:
-            pass
+            return self.update_project_ip()
         elif self.num_project in range(1,len(self.mb_config_data['project_list'])+1):
             self.mb_config_data['current_project'] = self.mb_config_data['project_list'][self.num_project-1]
+            return self.update_project_ip()
         else:
             print('please select correct number')
             return self.cmd_update_project_ip()
+    
+    def cmd_update_ip(self):
         os.system('cls')
-        ip = input('please enter ip:')
-        self.mb_config_data['ip'] = ip
+        print('====select ip====')
+        print('0. skip')
+        for i in range(len(self.mb_config_data['ip_list'])):
+            print('%d. %s' %(i+1,self.mb_config_data['ip_list'][i]))
+        try:
+            self.num_project = int(input('please enter project:'))
+        except Exception as E:
+            print('please select correct number')
+            return self.cmd_update_ip()
+        if self.num_project == 0:
+            return self.update_project_ip()
+        elif self.num_project in range(1,len(self.mb_config_data['ip_list'])+1):
+            self.mb_config_data['current_ip'] = self.mb_config_data['ip_list'][self.num_project-1]
+            return self.update_project_ip()
+        else:
+            print('please select correct number')
+            return self.cmd_update_ip()
+
+    def update_project_ip(self):
         self.mb_config_data = configus.save_config(self.mb_config_data,mb_config_path)
         print('updated project ip')
         os.system('pause')
@@ -172,7 +261,7 @@ class cmd_line:
     def cmd_create_trigger(self):
         os.system('cls')
         print('start user trigger')
-        mb_tools.make_trigger(user=self.mb_config_data['user'],ip=self.mb_config_data['ip'])
+        mb_tools.make_trigger(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'])
         c_exit = input('please enter 0, if you exit:')
         if c_exit == '0':
             return self.main()
@@ -180,7 +269,7 @@ class cmd_line:
             return self.cmd_create_trigger()
 
     def cmd_check_version(self):
-        hu_ver, sw_ver, map_ver, ui_ver = mb_tools.get_version(user=self.mb_config_data['user'],ip=self.mb_config_data['ip'])
+        hu_ver, sw_ver, map_ver, ui_ver = mb_tools.get_version(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'])
         os.system('cls')
         print('start check version')
         print('HU version: %s'% hu_ver)
@@ -206,12 +295,11 @@ class cmd_line:
         os.system('pause')
         return self.main()
 
-
     def cmd_change_binary(self):
         os.system('cls')
         print('start change binary')
         trigger_folder_path = input('please enter path which navigation in :')
-        mb_tools.change_binary(user=self.mb_config_data['user'],ip=self.mb_config_data['ip'],path_pc=trigger_folder_path)
+        mb_tools.change_binary(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'],path_pc=trigger_folder_path)
         print('change binary Done.')
         os.system('pause')
         return self.main()
@@ -220,7 +308,7 @@ class cmd_line:
         os.system('cls')
         print('star remount rw,')
         cmd = self.mb_config_data[self.mb_config_data['current_project']]['mount_rw']
-        mb_tools.send_by_plink(user=self.mb_config_data['user'],ip=self.mb_config_data['ip'],command=cmd)
+        mb_tools.send_by_plink(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'],command=cmd)
         print('remount rw, done')
         os.system('pause')
         return self.main()
