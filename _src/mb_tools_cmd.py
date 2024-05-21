@@ -42,19 +42,18 @@ class cmd_line:
         #===== input menu list =======
         print('#===== input menu list =======')
         print('please enter you want')
-        print('01. target reset')
-        print('02. set name server')
+        print('01. check version')
+        print('02. -')
         print('03. make trigger')
-        print('04. change binary')
+        print('04. -')
         print('05. change defualt position')
         print('06. remove persistancy')
-        print('09. extract screenshot from HU')
-        print('10. check version')
+        print('09. unzip HU trigger')
+        print('10. target reset')
         print('11. remount rw')
         print('90. setup project and ip')
         print('91. disable verity')
         print('92. partion enlarge')
-        print('99.get tirrger and take screen shot')
         print('0. exit')
         select_number = input('please enter number:')
         select_number = int(select_number) if select_number.isdigit() else None
@@ -63,16 +62,10 @@ class cmd_line:
             self.exit_main()
             return 0
         elif select_number == 1 :
-            self.cmd_target_reset()
-            return 0
-        elif select_number == 2 :
-            self.cmd_set_name_server()
+            self.cmd_check_version()
             return 0
         elif select_number == 3 :
             self.cmd_create_trigger()
-            return 0
-        elif select_number == 4 :
-            self.cmd_change_binary()
             return 0
         elif select_number == 5 :
             self.cmd_change_defualt()
@@ -84,7 +77,7 @@ class cmd_line:
             self.cmd_extract_HU()
             return 0
         elif select_number == 10 :
-            self.cmd_check_version()
+            self.cmd_target_reset()
             return 0
         elif select_number == 11 :
             self.cmd_remount()

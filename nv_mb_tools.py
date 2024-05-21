@@ -18,7 +18,7 @@ if refer_api == "local":
 logging= loggas.logger
 logging_file_name = loggas.log_full_name
 
-version = 'MB Tool v1.2'
+version = 'MB Tool v1.4'
 revision_list=[
     'Revision list',
     'v0.1 (2022-01-24) : proto type release (beta ver.)',
@@ -33,12 +33,13 @@ revision_list=[
     'v1.01 (2023-11-07) : bug fix',
     'v1.1 (2024-01-31) : add some function',
     'v1.2 (2024-02-05) : add reset',
+    'v1.3 (2024-04-25) : change trigger function',
+    'v1.4 (2024-05-21) : remove some funtions not useful, change putty version',
     '================================================'
     ]
 
 config_path ='static\config\config.json'
-config_data =configus.load_config(config_path)
-message_path = config_data['message_path']
+message_path = configus.load_config(config_path)['message_path']
 
 def function_cmd():
     cmd_line = mb_tools_cmd.cmd_line(version = version,revision=revision_list)
@@ -54,7 +55,12 @@ def prod_app():
     license = licea.check_License()
     lic_validation = licea.valild_License(license)
     os.system('color 0A') if license['user'] != 'miskang' else None
-    #os.system('mode con cols=70 lines=5') if license['user'] != 'miskang' else None
+    
+    config_data =configus.load_config(config_path)
+    if os.path.isdir(config_data['last_file_path']) is False:
+        logging.info('no dir in local')
+        config_data['last_file_path'] = os.path.join(os.path.expanduser('~'),'Desktop')
+        config_data = configus.save_config(config_data,config_path)
     if lic_validation == True:
         function_cmd()
     else:
@@ -63,10 +69,8 @@ def prod_app():
     return 0
 
 def debug_app():
-    #mb_tools.target_reset(user='root',ip='10.120.1.91')
-    mb_tools.change_default_pos(url = '-33.933382610133464, 151.18100410276847')
-    #print(True|True)
+    mb_tools.get_newest_trigger_number(user = 'root',ip='10.120.1.91')
     
 if __name__ =='__main__':
-    debug_app()
+    prod_app()
 

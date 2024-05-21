@@ -48,7 +48,7 @@ def autostoring_cache_plink(user,ip): #return type : 0
     return 0
     
 def send_by_ssh(ssh,command): #return type : str
-    stdin, stdout, stderr = ssh.exec_command(command)   # ssh 접속한 경로에 디렉토리 및 파일 리스트 확인 명령어 실행
+    stdin, stdout, stderr = ssh.exec_command(command)
     lines = stdout.readlines()
     temp_line =''
     for line in lines:
@@ -145,12 +145,27 @@ def target_reset(user,ip): #return type : str, str
     mb_data =configus.load_config(mb_path)
     command = 'ssh  -o StrictHostKeyChecking=no root@10.120.1.97 ./ifs/bin/reset'
     lines = send_by_plink(user,ip,command)
-    now = str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
-    #for line in lines:    # for문을 통해 명령어 결과값 출력.
-    #    re = str(line).replace('\n', '')
-    #    loggas.input_message(path = message_path, message = re)
-    return now, lines
+    return 0
 
+def get_newest_trigger_number(user,ip):
+    trigger_number = None
+    mb_data =configus.load_config(mb_path)
+    trigge_location = mb_data[mb_data['current_project']]['path_loca_trigger']
+    trigge_extension = mb_data[mb_data['current_project']]['sort_trigger_list'][0]
+    lines =  send_by_plink(user,ip,f'ls {trigge_location} | grep {trigge_extension}')
+    if '\n' not in lines:
+        return None
+    #logging.info(lines)
+    searched_triggers = lines.split('\n')
+    #logging.info(searched_triggers)
+    #find max value
+    triggers = {}
+    for trigger in searched_triggers:
+        if len(trigger.split('_')) > 2:
+            triggers[int(trigger.split('_')[1])] = trigger
+    logging.info(triggers[max(triggers)])
+    trigger_number = triggers[max(triggers)].split('.tar')[0]
+    return trigger_number
 
 def make_trigger(user,ip): #return type : str, str
     logging.debug('send user trigger.')
@@ -158,37 +173,38 @@ def make_trigger(user,ip): #return type : str, str
     command = mb_data[mb_data['current_project']]['user_trigger']
     logging.info(command)
     lines = send_by_plink(user,ip,command)
-    now = str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
-    #for line in lines:    # for문을 통해 명령어 결과값 출력.
-    #    re = str(line).replace('\n', '')
-    #    loggas.input_message(path = message_path, message = re)
-    return now, lines
+    logging.info(lines)
+    import time
+    time.sleep(3)
+    trigger_number = get_newest_trigger_number(user,ip)
+    get_tmp_screenshot(user = user,ip=ip, server_file_path =None, download_path =config_data['last_file_path'], change_file_name =f'{trigger_number}.png')
+
+    return lines
 
 def partion_enlarge(user,ip): #return type : str, str
     mb_data =configus.load_config(mb_path)
     command = f"{mb_data[mb_data['current_project']]['partion_enlarge']}"
     logging.info(command)
     lines = send_by_plink(user,ip,command)
-    now = str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
-    #for line in lines:    # for문을 통해 명령어 결과값 출력.
-    #    re = str(line).replace('\n', '')
-    #    loggas.input_message(path = message_path, message = re)
-    return now, lines
+    return lines
 
-def get_tmp_screenshot(user = 'root',ip=None,file=None,path='./static/temp',trigger_time=None):  #return type : 0
+def get_tmp_screenshot(user = 'root',ip=None, server_file_path =None, download_path ='./static/temp', change_file_name =None):  #return type : 0
     mb_data =configus.load_config(mb_path)
-    if file == None:
-        file = mb_data[mb_data['current_project']]['temp_png_path']
-    download_result, download_path = download_file(user,ip,file,path)
-    if download_result is not True:
+    if server_file_path == None:
+        server_file_path = mb_data[mb_data['current_project']]['temp_png_path']
+    if change_file_name is None:
+        change_file_name = str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
+    #make file path
+    server_file_path = server_file_path
+    local_path_downloaded = os.path.join(download_path,os.path.basename(server_file_path))
+    local_path_changed = os.path.join(download_path,os.path.basename(change_file_name))
+    os.remove(local_path_downloaded) if os.path.isfile(local_path_downloaded) else None
+    downloaded_result, download_path = download_file(user,ip,server_file_path,download_path)
+    if downloaded_result is not True:
         return 0
-    if trigger_time is None:
-        trigger_time = str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
     else:
-        download_path = f'{path}/{os.path.basename(file)}'
-        change_path = f'{path}/screenshot_{trigger_time}_.png'
-        #os.system(f'rename "{download_path}" "{change_path}"')
-        os.rename(download_path,change_path)
+        #change file name
+        os.rename(download_path,local_path_changed) if not os.path.isfile(local_path_changed) else None
         return 0
 
 def get_location_from_HU ():
