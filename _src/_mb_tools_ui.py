@@ -538,9 +538,7 @@ class FormWidget(QWidget):
                 pass
             if self.statusbar_status == "connected":
                 try:
-                    now, lines = mb_tools.make_trigger(user=self.user,ip=self.ip)
-                    time.sleep(20)
-                    mb_tools.get_tmp_screenshot(user = 'root', ip=self.ip,path=self.set_dir,trigger_time=now)
+                    lines = mb_tools.make_trigger(user=self.user,ip=self.ip)
                 except Exception as E:
                     logging.critical(traceback.format_exc())
                     loggas.input_message(path = self.message_path, message = f'there is error on_trigger')
