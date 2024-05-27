@@ -27,14 +27,16 @@ class cmd_line:
 
     def main(self):
         os.system('color 0A')
-        os.system('mode con cols=100 lines=30')
+        os.system('mode con cols=80 lines=35')
         os.system('cls')
         print('hello %s' %self.version)
-        for r in self.revision:
+        for r in self.revision[:3]:
+            print(r)
+        print('....')
+        for r in self.revision[-4:]:
             print(r)
         
         print('================================================')
-        
         print('        current project - %s' %self.mb_config_data['current_project'])
         print('        current ip -      %s' %self.mb_config_data['current_ip'])
         print('        trigger path -    %s' %self.config_data['last_file_path'])
@@ -43,7 +45,7 @@ class cmd_line:
         print('#===== input menu list =======')
         print('please enter you want')
         print('01. check version')
-        print('02. -')
+        print('02. change binary')
         print('03. make trigger')
         print('04. -')
         print('05. change defualt position')
@@ -63,6 +65,9 @@ class cmd_line:
             return 0
         elif select_number == 1 :
             self.cmd_check_version()
+            return 0
+        elif select_number == 2 :
+            self.cmd_change_binary()
             return 0
         elif select_number == 3 :
             self.cmd_create_trigger()
@@ -291,11 +296,31 @@ class cmd_line:
     def cmd_change_binary(self):
         os.system('cls')
         print('start change binary')
-        trigger_folder_path = input('please enter path which navigation in :')
-        mb_tools.change_binary(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'],path_pc=trigger_folder_path)
-        print('change binary Done.')
-        os.system('pause')
-        return self.main()
+        location_binary = self.mb_config_data[self.mb_config_data['current_project']]['location_binary']
+        folder_list = mb_tools.get_folder_list(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'],path=location_binary)
+        #remove opt
+        folder_list.remove('opt')
+        print('which version do you want to update?')
+        for count_folder in range(len(folder_list)):
+            print(f'{count_folder+1}: {folder_list[count_folder]}')
+        self.num_version = input('please enter version:')
+        try:
+            self.num_version = int(self.num_version)
+            self.num_version = self.num_version-1
+        except:
+            print('select wrong number')
+            os.system('pause')
+            self.cmd_change_binary()
+        if self.num_version not in range(len(folder_list)):
+            print('select wrong number')
+            os.system('pause')
+        else:
+            os.system('cls')
+            print(f'you select {folder_list[self.num_version]}')
+            mb_tools.change_binary(user=self.mb_config_data['user'],ip=self.mb_config_data['current_ip'],version=folder_list[self.num_version])
+            print(f'finish update {folder_list[self.num_version]}')
+            os.system('pause')
+            return self.main()
 
     def cmd_remount(self):
         os.system('cls')

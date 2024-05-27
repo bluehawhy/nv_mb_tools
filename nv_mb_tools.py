@@ -35,6 +35,7 @@ revision_list=[
     'v1.2 (2024-02-05) : add reset',
     'v1.3 (2024-04-25) : change trigger function',
     'v1.4 (2024-05-21) : remove some funtions not useful, change putty version',
+    'v1.5 (2024-05-27) : add function swap binary',
     '================================================'
     ]
 
@@ -69,7 +70,8 @@ def prod_app():
     return 0
 
 def debug_app():
-    mb_tools.get_newest_trigger_number(user = 'root',ip='10.120.1.91')
+    cmd_line = mb_tools_cmd.cmd_line(version = version,revision=revision_list)
+    cmd_line.cmd_change_binary()
     
 if __name__ =='__main__':
     prod_app()

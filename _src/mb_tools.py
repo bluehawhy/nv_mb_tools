@@ -57,7 +57,7 @@ def send_by_ssh(ssh,command): #return type : str
     return temp_line 
 
 def send_by_plink(user,ip,command): #return type : str
-    command = f'static\\tool\putty\plink.exe {user}@{ip} "{command}" > static\\temp\plink.txt'
+    command = f'static\\tool\putty\plink.exe -no-antispoof {user}@{ip} "{command}" > static\\temp\plink.txt'
     os.system(command)
     f = open("static\\temp\plink.txt", "r")
     lines =f.read()
@@ -257,7 +257,6 @@ def reset_persis():
     return 0
 
 #============================== change pos ============================================
-
 def convert_location(url):
     #get lattitude and longtude
     locations = re.findall('-?[0-9]{1,3}\.[0-9]{5,7}',url)
@@ -379,30 +378,27 @@ def get_traffic_sdi_dat(user,ip,path='./static/temp/traffic'): #return type : in
     return 0
 
 #============================== binary ============================================
-def change_binary(user,ip,path_pc):
-    autostoring_cache_plink(user,ip)
+def get_folder_list(user,ip,path):
+    cmd = f'ls -d {path}/*/'
+    folders = send_by_plink(user,ip,cmd)
+    #modify full path and slash
+    folders = folders.replace(f'{path}','')
+    folders = folders.replace('/','')
+    #change to list
+    folders = folders.split('\n')
+    folders.remove('')
+    #logging.info(folders)
+    return folders
+
+
+def change_binary(user,ip,version):
     mb_data =configus.load_config(mb_path)
     current_project = mb_data['current_project']
-    #check binary exist
-    filelist = os.listdir(path_pc)
-    if 'nv_main' not in filelist:
-        logging.info(f'there is no navi binary')
-        loggas.input_message(path = message_path, message = f'there is no navi binary')
-        return 0
-    #how to change binary
-    loggas.input_message(path = message_path, message = f'start change binary')
-    commands = mb_data[current_project]['change_binary']
-    #following the step.
-    for commd in commands:
-        commds = commd.split(' - ')
-        if commds[0] == 'commnd':
-            send_by_plink(user,ip,commds[1])
-        if commds[0] == 'copy_new_binary':
-            for fi in filelist:
-                uploadfile(user,ip,os.path.join(path_pc,fi),commds[1])    
-            #need file check -> no problme = pass / else -> break and return 0
-            logging.info(os.path.getsize(path_pc))
-    loggas.input_message(path = message_path, message = f'change binary done.')
+    send_by_plink(user,ip, mb_data[current_project]['stop_service'])
+    send_by_plink(user,ip, mb_data[current_project]['remove_binary'])
+    send_by_plink(user,ip, f'cp {mb_data[current_project]["location_binary"]}/{version}/* {mb_data[current_project]["location_binary"]}')
+    send_by_plink(user,ip, mb_data[current_project]['permisson_binary'])
+    send_by_plink(user,ip, mb_data[current_project]['start_service'])
     return 0
 
 #============================== trigger ============================================
